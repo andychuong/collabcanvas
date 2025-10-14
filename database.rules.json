@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "cursors": {
+      ".read": "auth != null",
+      "$userId": {
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    },
+    "presence": {
+      ".read": "auth != null",
+      "$userId": {
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    }
+  }
+}
