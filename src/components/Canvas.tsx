@@ -41,7 +41,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   showMinimap = false,
 }) => {
   const stageRef = useRef<Konva.Stage>(null);
-  const [stageSize, setStageSize] = useState({ width: window.innerWidth, height: window.innerHeight - 60 });
+  const [stageSize, setStageSize] = useState({ 
+    width: Math.max(Math.min(window.innerWidth - 360, 1600), 400),
+    height: Math.max(Math.min(window.innerHeight - 140, 900), 300)
+  });
 
   // Custom hooks
   const {
@@ -84,11 +87,16 @@ export const Canvas: React.FC<CanvasProps> = ({
     onShapeUpdate,
   });
 
-  // Handle window resize - constrain to viewport container
+  // Handle window resize - calculate based on available space
   useEffect(() => {
     const handleResize = () => {
-      const width = Math.min(window.innerWidth - 360, 1600);
-      const height = Math.min(window.innerHeight - 140, 900);
+      // Account for toolbar (60px), sidebar width (280px), gaps and padding
+      const availableWidth = window.innerWidth - 280 - 80; // sidebar + padding
+      const availableHeight = window.innerHeight - 60 - 80; // toolbar + padding
+      
+      const width = Math.min(availableWidth, 1600);
+      const height = Math.min(availableHeight, 900);
+      
       setStageSize({
         width: Math.max(width, 400),
         height: Math.max(height, 300),
@@ -127,12 +135,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [viewportDragEnd, handleStageDragEnd]);
 
   return (
-    <div className="mt-[60px] ml-[280px] flex items-start justify-start pl-4 pt-8 h-[calc(100vh-60px)]">
+    <div className="flex items-center justify-center">
       <div className="relative border-4 border-gray-300 rounded-lg shadow-2xl overflow-hidden bg-white" style={{
-        width: 'calc(100vw - 360px)',
-        height: 'calc(100vh - 140px)',
-        maxWidth: '1600px',
-        maxHeight: '900px',
+        width: stageSize.width,
+        height: stageSize.height,
       }}>
         <Stage
           ref={stageRef}

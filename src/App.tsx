@@ -82,7 +82,7 @@ function App() {
       shape.text = 'Double click to edit';
       shape.fontSize = 24;
     } else if (type === 'line') {
-      shape.points = [0, 0, 100, 100];
+      shape.points = [0, 0, 100, 0];
       shape.stroke = getRandomColor();
       shape.strokeWidth = 2;
     }
@@ -301,43 +301,50 @@ function App() {
         currentUser={userName}
       />
       
-      {/* Left sidebar with online users and controls */}
-      <div className="fixed left-4 top-[92px] z-50 space-y-4">
-        <UsersList users={onlineUsers} currentUserId={user.uid} />
-        
-        {/* Controls panel */}
-        <div className="bg-white border-4 border-gray-300 rounded-lg shadow-2xl p-4 w-64">
-          <h3 className="font-semibold text-gray-800 mb-2">Controls</h3>
-          <ul className="text-sm text-gray-600 space-y-1">
-            <li>🖱️ <strong>Drag canvas</strong></li>
-            <li>🔍 <strong>Zoom:</strong> Mouse wheel</li>
-            <li>✋ <strong>Move:</strong> Drag shapes</li>
-            <li>🎯 <strong>Select:</strong> Click shape</li>
-            <li>📦 <strong>Multi-select:</strong> Ctrl/Cmd + Click</li>
-            <li>✏️ <strong>Edit text:</strong> Double-click text</li>
-            <li>🗑️ <strong>Delete:</strong> Select + Delete key</li>
-            <li>↶ <strong>Undo:</strong> Ctrl/Cmd + Z</li>
-            <li>↷ <strong>Redo:</strong> Ctrl/Cmd + Y</li>
-            <li>⎋ <strong>Deselect:</strong> Escape key</li>
-          </ul>
+      {/* Centered content container */}
+      <div className="flex items-center justify-center h-full pt-[60px]">
+        <div className="flex items-start gap-4 max-w-[2000px] w-full justify-center px-4">
+          {/* Left sidebar with online users and controls */}
+          <div className="space-y-4 flex-shrink-0">
+            <UsersList users={onlineUsers} currentUserId={user.uid} />
+            
+            {/* Controls panel */}
+            <div className="bg-white border-4 border-gray-300 rounded-lg shadow-2xl p-4 w-64">
+              <h3 className="font-semibold text-gray-800 mb-2">Controls</h3>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>🖱️ <strong>Drag canvas</strong></li>
+                <li>🔍 <strong>Zoom:</strong> Mouse wheel</li>
+                <li>✋ <strong>Move:</strong> Drag shapes</li>
+                <li>🎯 <strong>Select:</strong> Click shape</li>
+                <li>📦 <strong>Multi-select:</strong> Ctrl/Cmd + Click</li>
+                <li>✏️ <strong>Edit text:</strong> Double-click text</li>
+                <li>🗑️ <strong>Delete:</strong> Select + Delete key</li>
+                <li>↶ <strong>Undo:</strong> Ctrl/Cmd + Z</li>
+                <li>↷ <strong>Redo:</strong> Ctrl/Cmd + Y</li>
+                <li>⎋ <strong>Deselect:</strong> Escape key</li>
+              </ul>
+            </div>
+          </div>
+          
+          {/* Canvas container */}
+          <div className="flex-shrink-0">
+            <Canvas
+              shapes={shapes}
+              cursors={cursors}
+              onShapeUpdate={handleShapeUpdate}
+              onShapeSelect={setSelectedShapeId}
+              onMultiSelect={setSelectedShapeIds}
+              selectedShapeId={selectedShapeId}
+              selectedShapeIds={selectedShapeIds}
+              onCursorMove={handleCursorMove}
+              viewport={viewport}
+              onViewportChange={handleViewportChange}
+              onViewportInteraction={handleViewportInteraction}
+              showMinimap={showMinimap}
+            />
+          </div>
         </div>
       </div>
-
-      
-      <Canvas
-        shapes={shapes}
-        cursors={cursors}
-        onShapeUpdate={handleShapeUpdate}
-        onShapeSelect={setSelectedShapeId}
-        onMultiSelect={setSelectedShapeIds}
-        selectedShapeId={selectedShapeId}
-        selectedShapeIds={selectedShapeIds}
-        onCursorMove={handleCursorMove}
-        viewport={viewport}
-        onViewportChange={handleViewportChange}
-        onViewportInteraction={handleViewportInteraction}
-        showMinimap={showMinimap}
-      />
     </div>
   );
 }
