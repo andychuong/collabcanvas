@@ -13,7 +13,7 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 - **Track who's online** with live presence indicators and user lists
 - **Access from anywhere** - fully web-based, no installation required
 
-> **📋 Full Feature Set Implemented!** See [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) for complete implementation details.
+> **📋 Full Feature Set Implemented!** All planned features have been successfully implemented.
 
 ## 🚀 Live Demo
 
@@ -21,12 +21,9 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 ## 📖 Quick Links
 
-- **[Quick Start Guide](./QUICKSTART.md)** - Get running in 5 minutes
-- **[Setup Instructions](./SETUP.md)** - Detailed setup guide  
 - **[Architecture](./ARCHITECTURE.md)** - System design and decisions
 - **[Deployment Guide](./DEPLOYMENT.md)** - Deploy to production
-- **[Testing Guide](./TESTING.md)** - Comprehensive testing procedures
-- **[Project Summary](./PROJECT_SUMMARY.md)** - Complete implementation overview
+- **[Diagrams](./DIAGRAMS.md)** - Visual system diagrams
 
 ## ✨ Features
 
@@ -101,7 +98,14 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 ## 🔧 Setup Instructions
 
-See [SETUP.md](./SETUP.md) for detailed installation and configuration instructions.
+### Installation
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Configure Firebase credentials in `.env` file
+4. Run development server: `npm run dev`
+
+For Firebase configuration, you'll need to create a Firebase project and add your credentials to a `.env` file in the root directory.
 
 ## 📐 Architecture
 
@@ -215,5 +219,5 @@ MIT License - feel free to use this project for learning and development.
 
 ---
 
-**Note:** Make sure to configure your Firebase credentials in the `.env` file before running the application locally. See [SETUP.md](./SETUP.md) for details.
+**Note:** Make sure to configure your Firebase credentials in the `.env` file before running the application locally.
 
