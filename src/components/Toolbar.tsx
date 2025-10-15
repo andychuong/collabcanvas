@@ -25,12 +25,19 @@ interface ToolbarProps {
 }
 
 // Helper function to get initials from a name
-const getInitials = (name: string): string => {
-  const words = name.trim().split(/\s+/);
+const getInitials = (name: string | undefined): string => {
+  if (!name || typeof name !== 'string') {
+    return '??';
+  }
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return '??';
+  }
+  const words = trimmedName.split(/\s+/);
   if (words.length >= 2) {
     return (words[0][0] + words[words.length - 1][0]).toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return trimmedName.slice(0, 2).toUpperCase();
 };
 
 export const Toolbar: React.FC<ToolbarProps> = React.memo(({
@@ -74,8 +81,14 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   
   // Show max 10 users, then show "+N" for additional users
   const maxVisibleUsers = 10;
-  const visibleUsers = onlineUsers.slice(0, maxVisibleUsers);
-  const additionalUsersCount = Math.max(0, onlineUsers.length - maxVisibleUsers);
+  
+  // Separate current user from other users
+  const currentUser = onlineUsers.find(user => user.id === currentUserId);
+  const otherUsers = onlineUsers.filter(user => user.id !== currentUserId);
+  
+  // Take up to maxVisibleUsers-1 other users (to leave room for current user)
+  const visibleOtherUsers = otherUsers.slice(0, maxVisibleUsers - 1);
+  const additionalUsersCount = Math.max(0, otherUsers.length - visibleOtherUsers.length);
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-white shadow-sm z-10" style={{
@@ -311,32 +324,55 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
 
         <div className="flex items-center gap-3">
           {/* User Bubbles */}
-          <div className="flex items-center -space-x-2">
-            {visibleUsers.map((user) => (
+          <div className="flex items-center">
+            {/* Other users with overlap */}
+            {visibleOtherUsers.length > 0 && (
+              <div className="flex items-center -space-x-2">
+                {visibleOtherUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="relative group"
+                    title={user.name}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-black text-xs font-semibold shadow-md border-2 border-gray-400 hover:scale-110 transition-transform cursor-pointer"
+                      style={{ backgroundColor: user.color }}
+                    >
+                      {getInitials(user.name)}
+                    </div>
+                    {/* Tooltip on hover - shown below the bubble */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                      {user.name}
+                    </div>
+                  </div>
+                ))}
+                {additionalUsersCount > 0 && (
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-400 text-white text-xs font-semibold shadow-md border-2 border-gray-400"
+                    title={`${additionalUsersCount} more user${additionalUsersCount > 1 ? 's' : ''} online`}
+                  >
+                    +{additionalUsersCount}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Current user (logged in) - separated with spacing */}
+            {currentUser && (
               <div
-                key={user.id}
-                className="relative group"
-                title={user.id === currentUserId ? `${user.name} (you)` : user.name}
+                className={`relative group ${visibleOtherUsers.length > 0 ? 'ml-2' : ''}`}
+                title={`${currentUser.name} (you)`}
               >
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-black text-xs font-semibold shadow-md border-2 border-gray-400 hover:scale-110 transition-transform cursor-pointer"
-                  style={{ backgroundColor: user.color }}
+                  style={{ backgroundColor: currentUser.color }}
                 >
-                  {getInitials(user.name)}
+                  {getInitials(currentUser.name)}
                 </div>
                 {/* Tooltip on hover - shown below the bubble */}
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-                  {user.name}
-                  {user.id === currentUserId && ' (you)'}
+                  {currentUser.name} (you)
                 </div>
-              </div>
-            ))}
-            {additionalUsersCount > 0 && (
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-400 text-white text-xs font-semibold shadow-md border-2 border-gray-400"
-                title={`${additionalUsersCount} more user${additionalUsersCount > 1 ? 's' : ''} online`}
-              >
-                +{additionalUsersCount}
               </div>
             )}
           </div>

@@ -10,6 +10,7 @@ import { TextEditor } from './canvas/TextEditor';
 import { useCanvasViewport } from '../hooks/useCanvasViewport';
 import { useCanvasInteraction } from '../hooks/useCanvasInteraction';
 import { useTextEditing } from '../hooks/useTextEditing';
+import { useEdgePanning } from '../hooks/useEdgePanning';
 import { clampViewportPosition } from '../utils/canvasHelpers';
 
 interface CanvasProps {
@@ -73,6 +74,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
   const [panStartPos, setPanStartPos] = useState<{ x: number; y: number } | null>(null);
+  
+  // Resizing state
+  const [isResizing, setIsResizing] = useState(false);
   
   // Select mode state (when Cmd/Ctrl is held via keyboard)
   const [isKeyboardSelectMode, setIsKeyboardSelectMode] = useState(false);
@@ -138,6 +142,18 @@ export const Canvas: React.FC<CanvasProps> = ({
     shapes,
     stageRef,
     onShapeUpdate,
+  });
+
+  // Edge panning - activate during dragging, resizing, or shape creation
+  const isEdgePanningActive = isDragging || isResizing || !!shapeToPlace;
+  const { updatePointerPosition } = useEdgePanning({
+    stageRef,
+    viewport,
+    stageSize,
+    onViewportChange,
+    isActive: isEdgePanningActive,
+    edgeSize: 50,
+    panSpeed: 8,
   });
 
   // Handle window resize - calculate based on available space
@@ -256,7 +272,12 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // Handle selection box drawing
     handleStageMouseMoveSelection(e);
-  }, [viewport, onCursorMove, handlePanMove, handleStageMouseMoveSelection]);
+
+    // Update edge panning if active
+    if (isEdgePanningActive) {
+      updatePointerPosition();
+    }
+  }, [viewport, onCursorMove, handlePanMove, handleStageMouseMoveSelection, isEdgePanningActive, updatePointerPosition]);
 
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {
@@ -514,6 +535,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             onShapeUpdate={onShapeUpdate}
             otherUsersSelections={otherUsersSelections}
             isDragging={isDragging}
+            onResizingChange={setIsResizing}
           />
 
           {/* Cursors layer */}

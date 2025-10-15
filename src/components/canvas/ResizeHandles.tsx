@@ -6,11 +6,12 @@ import { Shape } from '../../types';
 interface ResizeHandlesProps {
   shape: Shape;
   onUpdate: (shape: Shape, immediate?: boolean) => void;
+  onResizingChange?: (isResizing: boolean) => void;
 }
 
 type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 
-export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate }) => {
+export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, onResizingChange }) => {
   if (shape.type !== 'rectangle' || !shape.width || !shape.height) {
     return null;
   }
@@ -101,7 +102,12 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
     }
     
     e.cancelBubble = true;
-  }, []);
+    
+    // Notify that resizing has started
+    if (onResizingChange) {
+      onResizingChange(true);
+    }
+  }, [onResizingChange]);
 
   const handleCornerDragEnd = useCallback((corner: Corner, e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
@@ -121,7 +127,12 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
       height: newHeight,
       updatedAt: Date.now(),
     }, true);
-  }, [shape, calculateNewDimensions, onUpdate]);
+    
+    // Notify that resizing has ended
+    if (onResizingChange) {
+      onResizingChange(false);
+    }
+  }, [shape, calculateNewDimensions, onUpdate, onResizingChange]);
 
   return (
     <Group>

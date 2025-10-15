@@ -20,6 +20,7 @@ interface ShapeRendererProps {
   onShapeUpdate: (shape: Shape) => void;
   otherUsersSelections?: Map<string, { shapeIds: string[]; color: string; userName: string }>;
   isDragging?: boolean;
+  onResizingChange?: (isResizing: boolean) => void;
 }
 
 export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
@@ -35,6 +36,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
   onShapeUpdate,
   otherUsersSelections = new Map(),
   isDragging = false,
+  onResizingChange,
 }) => {
   // Check if a shape is selected by another user
   const getOtherUserSelection = (shapeId: string): { color: string; userName: string } | null => {
@@ -181,6 +183,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
             key={`handles-${shape.id}`}
             shape={shape}
             onUpdate={onShapeUpdate}
+            onResizingChange={onResizingChange}
           />
         ))
       }
@@ -193,6 +196,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
             key={`circle-handles-${shape.id}`}
             shape={shape}
             onUpdate={onShapeUpdate}
+            onResizingChange={onResizingChange}
           />
         ))
       }

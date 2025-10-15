@@ -6,11 +6,12 @@ import { Shape } from '../../types';
 interface CircleResizeHandlesProps {
   shape: Shape;
   onUpdate: (shape: Shape, immediate?: boolean) => void;
+  onResizingChange?: (isResizing: boolean) => void;
 }
 
 type Direction = 'top' | 'right' | 'bottom' | 'left';
 
-export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape, onUpdate }) => {
+export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape, onUpdate, onResizingChange }) => {
   const groupRef = useRef<Konva.Group>(null);
 
   // Update group position to match the circle's real-time position
@@ -118,8 +119,13 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
       return;
     }
     
+    // Notify that resizing has started
+    if (onResizingChange) {
+      onResizingChange(true);
+    }
+    
     e.cancelBubble = true;
-  }, []);
+  }, [onResizingChange]);
 
   const handleDragEnd = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
@@ -133,7 +139,12 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
       radius: newRadius,
       updatedAt: Date.now(),
     }, true);
-  }, [shape, calculateNewRadius, onUpdate]);
+    
+    // Notify that resizing has ended
+    if (onResizingChange) {
+      onResizingChange(false);
+    }
+  }, [shape, calculateNewRadius, onUpdate, onResizingChange]);
 
   // After all hooks, check if we should render
   if (shape.type !== 'circle' || !shape.radius) {

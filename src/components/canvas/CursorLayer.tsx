@@ -18,30 +18,20 @@ export const CursorLayer: React.FC<CursorLayerProps> = React.memo(({ cursors }) 
             shadowBlur={5}
             shadowColor={cursor.color}
           />
-          {/* User name label */}
-          <KonvaText
-            x={10}
-            y={-5}
-            text={cursor.userName}
-            fontSize={12}
-            fill="#ffffff"
-            padding={4}
-            cornerRadius={4}
-            shadowBlur={2}
-            shadowColor="rgba(0,0,0,0.3)"
-          />
+          {/* User name label background */}
           <Rect
             x={10}
             y={-5}
-            width={cursor.userName.length * 7 + 8}
+            width={cursor.userName.length * 7.5 + 12}
             height={20}
             fill={cursor.color}
             cornerRadius={4}
             shadowBlur={2}
             shadowColor="rgba(0,0,0,0.3)"
           />
+          {/* User name text */}
           <KonvaText
-            x={14}
+            x={16}
             y={-1}
             text={cursor.userName}
             fontSize={12}

@@ -11,6 +11,11 @@
       "$userId": {
         ".write": "auth != null && auth.uid == $userId"
       }
+    },
+    "selections": {
+      "$userId": {
+        ".write": "auth != null && auth.uid == $userId"
+      }
     }
   }
 }

@@ -203,9 +203,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
 
 ### Getting Started
 
-1. **Create an account** or use demo credentials:
-   - Email: `test@example.com`
-   - Password: `test123`
+1. **Create an account** by signing up with your email and password.
 
 2. **Draw shapes** using the toolbar buttons:
    - **Rectangle**: Click once to place first corner, move mouse to preview, click again to finalize
