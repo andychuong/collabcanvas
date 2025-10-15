@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2 } from 'lucide-react';
+import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus } from 'lucide-react';
 import { ShapeType, User as UserType, Shape } from '../types';
 import { ColorPicker } from './ColorPicker';
 
@@ -18,6 +18,7 @@ interface ToolbarProps {
   shapes: Shape[];
   onColorChange?: (color: string) => void;
   onFillColorChange?: (color: string) => void;
+  onFontSizeChange?: (size: number) => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
 }
@@ -46,6 +47,7 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   shapes,
   onColorChange,
   onFillColorChange,
+  onFontSizeChange,
   isSelectMode,
   onToggleSelectMode,
 }) => {
@@ -200,6 +202,45 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                       />
                     )}
                   </>
+                )}
+
+                {/* Font Size Controls (only for text) */}
+                {selectedShapeIds.length === 1 && selectedShape?.type === 'text' && onFontSizeChange && (
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-1">
+                    <button
+                      onClick={() => {
+                        const currentSize = selectedShape.fontSize || 24;
+                        onFontSizeChange(Math.max(8, currentSize - 2));
+                      }}
+                      className="flex items-center justify-center w-6 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      title="Decrease font size"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      value={selectedShape.fontSize || 24}
+                      onChange={(e) => {
+                        const size = parseInt(e.target.value, 10);
+                        if (!isNaN(size) && size >= 8 && size <= 200) {
+                          onFontSizeChange(size);
+                        }
+                      }}
+                      className="w-12 h-8 text-center text-sm border-none bg-transparent focus:outline-none"
+                      min="8"
+                      max="200"
+                    />
+                    <button
+                      onClick={() => {
+                        const currentSize = selectedShape.fontSize || 24;
+                        onFontSizeChange(Math.min(200, currentSize + 2));
+                      }}
+                      className="flex items-center justify-center w-6 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      title="Increase font size"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
                 
                 <div className="relative group">

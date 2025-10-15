@@ -74,7 +74,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               y={shape.y}
               radius={shape.radius || 50}
               fill={shape.fill}
-              draggable={!isSelected}
+              draggable={true}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}

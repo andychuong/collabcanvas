@@ -420,6 +420,25 @@ function App() {
     updateShape(updatedShape);
   }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
 
+  const handleFontSizeChange = useCallback((size: number) => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update font size for text
+    if (shape.type !== 'text') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      fontSize: size,
+      updatedAt: Date.now(),
+    };
+
+    updateShape(updatedShape);
+  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+
   const handleUndo = useCallback(async () => {
     const previousShapes = undo();
     if (previousShapes && user) {
@@ -639,6 +658,7 @@ function App() {
         shapes={shapes}
         onColorChange={handleColorChange}
         onFillColorChange={handleFillColorChange}
+        onFontSizeChange={handleFontSizeChange}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
       />

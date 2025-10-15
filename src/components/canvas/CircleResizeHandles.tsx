@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { Circle, Group } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from '../../types';
@@ -11,28 +11,53 @@ interface CircleResizeHandlesProps {
 type Direction = 'top' | 'right' | 'bottom' | 'left';
 
 export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape, onUpdate }) => {
-  if (shape.type !== 'circle' || !shape.radius) {
-    return null;
-  }
+  const groupRef = useRef<Konva.Group>(null);
 
-  const radius = shape.radius;
-  const strokeColor = shape.stroke || '#000000';
+  // Update group position to match the circle's real-time position
+  useEffect(() => {
+    if (shape.type !== 'circle' || !shape.radius) return;
+    if (!groupRef.current) return;
 
-  // Calculate handle positions at cardinal directions
-  const handles = {
-    top: { x: shape.x, y: shape.y - radius },
-    right: { x: shape.x + radius, y: shape.y },
-    bottom: { x: shape.x, y: shape.y + radius },
-    left: { x: shape.x - radius, y: shape.y },
-  };
+    const stage = groupRef.current.getStage();
+    if (!stage) return;
+
+    const circleNode = stage.findOne(`#${shape.id}`) as Konva.Circle;
+    if (!circleNode) return;
+
+    // Sync handle group position with circle during drag
+    const syncPosition = () => {
+      if (groupRef.current && circleNode) {
+        groupRef.current.position({
+          x: circleNode.x(),
+          y: circleNode.y()
+        });
+      }
+    };
+
+    // Listen to the circle's drag events
+    circleNode.on('dragmove', syncPosition);
+
+    // Initial sync
+    syncPosition();
+
+    return () => {
+      circleNode.off('dragmove', syncPosition);
+    };
+  }, [shape.id, shape.x, shape.y, shape.type, shape.radius]);
 
   const handleDragMove = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
+    if (shape.type !== 'circle' || !shape.radius) return;
     const node = e.target;
     const stage = node.getStage();
     if (!stage) return;
     
     const pointerPos = stage.getPointerPosition();
     if (!pointerPos) return;
+
+    // Get the circle's current position
+    const circleNode = stage.findOne(`#${shape.id}`) as Konva.Circle;
+    const circleX = circleNode ? circleNode.x() : shape.x;
+    const circleY = circleNode ? circleNode.y() : shape.y;
 
     // Calculate the position in canvas coordinates
     const scale = stage.scaleX();
@@ -41,27 +66,27 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
     const mouseY = (pointerPos.y - stagePos.y) / scale;
 
     // Calculate distance from center to mouse position
-    const dx = mouseX - shape.x;
-    const dy = mouseY - shape.y;
+    const dx = mouseX - circleX;
+    const dy = mouseY - circleY;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     // Use this distance as the new radius
     const newRadius = Math.max(distance, 5);
 
-    // Calculate the new position for this handle based on its direction
+    // Calculate the new position for this handle relative to center
     let newHandlePos: { x: number; y: number };
     switch (direction) {
       case 'top':
-        newHandlePos = { x: shape.x, y: shape.y - newRadius };
+        newHandlePos = { x: 0, y: -newRadius };
         break;
       case 'right':
-        newHandlePos = { x: shape.x + newRadius, y: shape.y };
+        newHandlePos = { x: newRadius, y: 0 };
         break;
       case 'bottom':
-        newHandlePos = { x: shape.x, y: shape.y + newRadius };
+        newHandlePos = { x: 0, y: newRadius };
         break;
       case 'left':
-        newHandlePos = { x: shape.x - newRadius, y: shape.y };
+        newHandlePos = { x: -newRadius, y: 0 };
         break;
     }
 
@@ -83,8 +108,24 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
     e.cancelBubble = true;
   }, []);
 
+  // After all hooks, check if we should render
+  if (shape.type !== 'circle' || !shape.radius) {
+    return null;
+  }
+
+  const radius = shape.radius;
+  const strokeColor = shape.stroke || '#000000';
+
+  // Calculate handle positions relative to center (0, 0) since Group is positioned at circle center
+  const handles = {
+    top: { x: 0, y: -radius },
+    right: { x: radius, y: 0 },
+    bottom: { x: 0, y: radius },
+    left: { x: -radius, y: 0 },
+  };
+
   return (
-    <Group>
+    <Group ref={groupRef} x={shape.x} y={shape.y}>
       {/* Top handle */}
       <Circle
         x={handles.top.x}
