@@ -55,6 +55,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     height: window.innerHeight - 104 // 60px toolbar + 44px footer
   });
   
+  // Cursor position state (in canvas coordinates)
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+  
   // Selection box state
   const [selectionBox, setSelectionBox] = useState<{
     x1: number;
@@ -234,6 +237,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       const x = (pos.x - viewport.x) / scale;
       const y = (pos.y - viewport.y) / scale;
       onCursorMove(x, y);
+      
+      // Update cursor position for minimap
+      setCursorPosition({ x, y });
     }
 
     // Handle panning
@@ -246,6 +252,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {
     onCursorMove(-1000, -1000); // Move cursor off screen
+    setCursorPosition(null); // Clear cursor position for minimap
     
     // End panning if active
     if (isPanning) {
@@ -521,7 +528,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         {/* Minimap - shown during pan/zoom, positioned at bottom-right of canvas */}
         {showMinimap && (
-          <Minimap viewport={viewport} stageSize={stageSize} />
+          <Minimap viewport={viewport} stageSize={stageSize} cursorPosition={cursorPosition} />
         )}
       </div>
       

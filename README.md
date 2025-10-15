@@ -55,6 +55,8 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - **Text Editing**: Double-click for in-place editing with black cursor indicator
   - **Font Size Control**: Increase/decrease text size (8-200px) with +/- buttons or direct input
   - **Drag to Move**: Move any shape by dragging its center/body
+  - **Precise Positioning**: X/Y coordinate inputs in toolbar for exact placement
+  - **Keyboard Nudging**: Arrow keys move shapes by 1px, Shift+Arrow by 10px
   - **Visual Feedback**: Handles appear on selected shapes for intuitive interaction
 
 - **Selection & Multi-Object Management**
@@ -120,6 +122,7 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - **Grid Background**: Graph paper style for precision alignment
   - **Visual Feedback**: Selection highlighting, shadows, and hover states
   - **Responsive Layout**: Full-height canvas utilizing all available space
+  - **Enhanced Minimap**: Shows cursor X/Y coordinates while panning or zooming
 
 - **Comprehensive Help System**
   - **Help Modal**: Accessible via bottom-right footer button
@@ -223,12 +226,14 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
    - **Multi-Select**: Ctrl/Cmd+Click to add shapes to selection
    - **Select Mode**: Press V for box selection without accidental dragging
    - **Move**: Drag selected shape(s) to new position
+   - **Precise Position**: Type exact X and Y coordinates in toolbar inputs
 
 7. **Edit and manage**:
    - **Edit Text**: Double-click text to edit in-place (black cursor indicator)
    - **Delete**: Press Delete or Backspace to remove selected shapes
    - **Duplicate**: Press Ctrl/Cmd+D or click duplicate button
    - **Undo/Redo**: Use Ctrl/Cmd+Z and Ctrl/Cmd+Y
+   - **Nudge**: Use arrow keys to move by 1px or Shift+Arrow for 10px
 
 8. **See collaborators** in real-time:
    - View online users in the left sidebar
@@ -245,6 +250,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
 - `Spacebar` - Reset viewport to default (50% zoom, centered)
 
 **Shape Operations:**
+- `Arrow Keys` - Move selected shape(s) by 1 pixel (for precise positioning)
+- `Shift + Arrow Keys` - Move selected shape(s) by 10 pixels (for faster movement)
 - `Delete` or `Backspace` - Delete selected shape(s)
 - `Ctrl/Cmd + D` - Duplicate selected shape(s)
 - `Ctrl/Cmd + Z` - Undo last action

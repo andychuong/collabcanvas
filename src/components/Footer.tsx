@@ -79,7 +79,11 @@ export const Footer: React.FC = React.memo(() => {
                   </li>
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">✋ Move Shapes</div>
-                    <div>Click and drag any shape to move it around the canvas. If multiple shapes are selected, they'll all move together maintaining their relative positions.</div>
+                    <div>Click and drag any shape to move it around the canvas. If multiple shapes are selected, they'll all move together maintaining their relative positions. You can also use arrow keys for 1px movements or type exact X/Y coordinates in the toolbar.</div>
+                  </li>
+                  <li className="pl-4">
+                    <div className="font-semibold text-gray-700 mb-1">📍 Set Precise Position</div>
+                    <div>Select a shape to see its X and Y coordinates in the toolbar. Type new values directly to move the shape to an exact position - perfect for precise alignment.</div>
                   </li>
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">✏️ Edit Text</div>
@@ -106,6 +110,10 @@ export const Footer: React.FC = React.memo(() => {
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">🏠 Reset Viewport</div>
                     <div>Press Spacebar to instantly return to the default view (50% zoom, centered). Useful when you get lost or want to see the full canvas quickly.</div>
+                  </li>
+                  <li className="pl-4">
+                    <div className="font-semibold text-gray-700 mb-1">🗺️ Minimap Position Tracking</div>
+                    <div>While panning or zooming, a minimap appears showing your viewport and zoom level. The cursor's X and Y coordinates are displayed in the top-right corner for precise navigation.</div>
                   </li>
                 </ul>
               </section>
@@ -140,12 +148,14 @@ export const Footer: React.FC = React.memo(() => {
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl/Cmd + Y</kbd> <span className="ml-2">Redo last action</span></div>
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Delete</kbd> <span className="ml-2">Delete selected shapes</span></div>
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl/Cmd + D</kbd> <span className="ml-2">Duplicate selection</span></div>
+                    <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Arrow Keys</kbd> <span className="ml-2">Move selected (1px)</span></div>
                   </div>
                   <div className="space-y-2">
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">V</kbd> <span className="ml-2">Toggle select mode</span></div>
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Spacebar</kbd> <span className="ml-2">Reset viewport</span></div>
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Escape</kbd> <span className="ml-2">Cancel/Deselect</span></div>
                     <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl/Cmd</kbd> <span className="ml-2">Multi-select mode</span></div>
+                    <div><kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Shift + Arrows</kbd> <span className="ml-2">Move selected (10px)</span></div>
                   </div>
                 </div>
               </section>

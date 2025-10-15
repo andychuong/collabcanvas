@@ -5,9 +5,10 @@ import { VIEWPORT_MULTIPLIER } from '../../utils/canvasHelpers';
 interface MinimapProps {
   viewport: ViewportState;
   stageSize: { width: number; height: number };
+  cursorPosition: { x: number; y: number } | null;
 }
 
-export const Minimap: React.FC<MinimapProps> = ({ viewport, stageSize }) => {
+export const Minimap: React.FC<MinimapProps> = ({ viewport, stageSize, cursorPosition }) => {
   const gridWidth = 1600 * VIEWPORT_MULTIPLIER;
   const gridHeight = 900 * VIEWPORT_MULTIPLIER;
   
@@ -70,6 +71,13 @@ export const Minimap: React.FC<MinimapProps> = ({ viewport, stageSize }) => {
         <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
           {Math.round(viewport.scale * 100)}%
         </div>
+        
+        {/* Cursor position indicator */}
+        {cursorPosition && (
+          <div className="absolute top-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded font-mono">
+            X: {Math.round(cursorPosition.x)} Y: {Math.round(cursorPosition.y)}
+          </div>
+        )}
       </div>
     </div>
   );

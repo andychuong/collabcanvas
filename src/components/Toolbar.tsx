@@ -19,6 +19,7 @@ interface ToolbarProps {
   onColorChange?: (color: string) => void;
   onFillColorChange?: (color: string) => void;
   onFontSizeChange?: (size: number) => void;
+  onPositionChange?: (x: number, y: number) => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
 }
@@ -48,6 +49,7 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onColorChange,
   onFillColorChange,
   onFontSizeChange,
+  onPositionChange,
   isSelectMode,
   onToggleSelectMode,
 }) => {
@@ -240,6 +242,42 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                     >
                       <Plus className="w-4 h-4" />
                     </button>
+                  </div>
+                )}
+
+                {/* Position Controls (X and Y) */}
+                {selectedShapeIds.length === 1 && selectedShape && onPositionChange && (
+                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600 font-medium">X:</span>
+                      <input
+                        type="number"
+                        value={Math.round(selectedShape.x)}
+                        onChange={(e) => {
+                          const x = parseInt(e.target.value, 10);
+                          if (!isNaN(x)) {
+                            onPositionChange(x, selectedShape.y);
+                          }
+                        }}
+                        className="w-16 h-8 text-center text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                        title="X position"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600 font-medium">Y:</span>
+                      <input
+                        type="number"
+                        value={Math.round(selectedShape.y)}
+                        onChange={(e) => {
+                          const y = parseInt(e.target.value, 10);
+                          if (!isNaN(y)) {
+                            onPositionChange(selectedShape.x, y);
+                          }
+                        }}
+                        className="w-16 h-8 text-center text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                        title="Y position"
+                      />
+                    </div>
                   </div>
                 )}
                 

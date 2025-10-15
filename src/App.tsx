@@ -436,6 +436,23 @@ function App() {
     updateShape(updatedShape);
   }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
 
+  const handlePositionChange = useCallback((x: number, y: number) => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      x,
+      y,
+      updatedAt: Date.now(),
+    };
+
+    updateShape(updatedShape);
+  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+
   const handleUndo = useCallback(async () => {
     const previousShapes = undo();
     if (previousShapes && user) {
@@ -553,6 +570,42 @@ function App() {
       const isEditingText = (e.target as HTMLElement)?.tagName === 'TEXTAREA' || 
                            (e.target as HTMLElement)?.tagName === 'INPUT';
 
+      // Arrow keys - move selected shapes (only when not editing text)
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !isEditingText) {
+        if (selectedShapeIds.length > 0 || selectedShapeId) {
+          e.preventDefault();
+          
+          // Determine movement distance (1px normal, 10px with Shift)
+          const distance = e.shiftKey ? 10 : 1;
+          
+          // Calculate delta based on arrow key
+          let dx = 0;
+          let dy = 0;
+          if (e.key === 'ArrowUp') dy = -distance;
+          if (e.key === 'ArrowDown') dy = distance;
+          if (e.key === 'ArrowLeft') dx = -distance;
+          if (e.key === 'ArrowRight') dx = distance;
+          
+          // Get the shapes to move
+          const shapeIdsToMove = selectedShapeIds.length > 0 ? selectedShapeIds : (selectedShapeId ? [selectedShapeId] : []);
+          
+          // Update each selected shape
+          shapeIdsToMove.forEach(shapeId => {
+            const shape = shapes.find(s => s.id === shapeId);
+            if (shape) {
+              const updatedShape: Shape = {
+                ...shape,
+                x: shape.x + dx,
+                y: shape.y + dy,
+                updatedAt: Date.now(),
+              };
+              handleShapeUpdate(updatedShape, true); // Use immediate update for keyboard movements
+            }
+          });
+          return;
+        }
+      }
+
       // Spacebar - reset viewport to original view (only when not editing text)
       if (e.key === ' ' && !isEditingText) {
         e.preventDefault();
@@ -610,7 +663,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, selectedShapeIds, shapeToPlace, lineInProgress, rectangleInProgress, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode, deleteShape, getInitialViewport]);
+  }, [selectedShapeId, selectedShapeIds, shapeToPlace, lineInProgress, rectangleInProgress, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode, deleteShape, getInitialViewport, shapes, handleShapeUpdate]);
 
   if (authLoading) {
     return (
@@ -656,6 +709,7 @@ function App() {
         onColorChange={handleColorChange}
         onFillColorChange={handleFillColorChange}
         onFontSizeChange={handleFontSizeChange}
+        onPositionChange={handlePositionChange}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
       />
