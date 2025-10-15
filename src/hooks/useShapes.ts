@@ -74,8 +74,8 @@ export const useShapes = () => {
       const lastUpdateTime = new Map<string, number>();
       let timeoutId: NodeJS.Timeout | null = null;
       let finalFlushTimeoutId: NodeJS.Timeout | null = null;
-      const THROTTLE_MS = 50; // Update Firestore at most every 50ms
-      const FINAL_FLUSH_MS = 200; // After no updates for 200ms, force a final flush
+      const THROTTLE_MS = 16; // Update Firestore at most every 16ms (~60 FPS)
+      const FINAL_FLUSH_MS = 150; // After no updates for 150ms, force a final flush
 
       const flush = () => {
         if (pendingUpdates.size > 0) {

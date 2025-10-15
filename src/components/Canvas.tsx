@@ -129,6 +129,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     onExitSelectMode: handleExitSelectModeIfButton,
     shapes,
     onBatchUpdate: handleBatchUpdate,
+    onCursorMove,
   });
 
   const {

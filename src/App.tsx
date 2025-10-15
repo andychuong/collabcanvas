@@ -15,6 +15,7 @@ import { Toolbar } from './components/Toolbar';
 import { Footer } from './components/Footer';
 import { Shape, ShapeType, ViewportState } from './types';
 import { getUserColor, hexToRgba } from './utils/colors';
+import { APP_VERSION, VERSION_KEY } from './config/appVersion';
 
 /**
  * COLLABORATIVE EDITING & CONFLICT RESOLUTION STRATEGY:
@@ -46,6 +47,24 @@ import { getUserColor, hexToRgba } from './utils/colors';
  */
 function App() {
   const { user, loading: authLoading } = useAuth();
+  
+  // Version check - sign out users when app version changes (on deployment)
+  useEffect(() => {
+    const storedVersion = localStorage.getItem(VERSION_KEY);
+    
+    if (storedVersion && storedVersion !== APP_VERSION) {
+      // Version changed - sign out user and clear storage
+      console.log(`App version changed from ${storedVersion} to ${APP_VERSION}. Signing out user.`);
+      if (auth.currentUser) {
+        signOut(auth);
+      }
+      localStorage.clear();
+    }
+    
+    // Store current version
+    localStorage.setItem(VERSION_KEY, APP_VERSION);
+  }, []);
+  
   const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, throttledUpdateShape, deleteShape } = useShapes();
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
@@ -54,22 +73,32 @@ function App() {
   const [localShapeUpdates, setLocalShapeUpdates] = useState<Map<string, Shape>>(new Map());
   
   // Merge Firestore shapes with local updates (last write wins based on timestamp)
-  const shapes = firestoreShapes.map(shape => {
-    const localUpdate = localShapeUpdates.get(shape.id);
+  const shapes = (() => {
+    // Start with Firestore shapes and apply local updates
+    const shapeMap = new Map<string, Shape>();
     
-    if (localUpdate) {
-      // If we have a local update, compare timestamps
-      // Only use local if it's actually newer (handles concurrent edits)
-      if (localUpdate.updatedAt > shape.updatedAt) {
-        return localUpdate; // Local is newer, use it (pending sync)
-      } else {
-        // Firestore is newer or equal - another user's change wins
-        return shape; // Firestore is newer or equal, use it (last write wins)
+    // Add all Firestore shapes
+    firestoreShapes.forEach(shape => {
+      shapeMap.set(shape.id, shape);
+    });
+    
+    // Apply local updates (including new shapes not yet in Firestore)
+    localShapeUpdates.forEach((localShape, id) => {
+      const firestoreShape = shapeMap.get(id);
+      
+      if (!firestoreShape) {
+        // New shape not yet in Firestore, use local version
+        shapeMap.set(id, localShape);
+      } else if (localShape.updatedAt > firestoreShape.updatedAt) {
+        // Local is newer, use it
+        shapeMap.set(id, localShape);
       }
-    }
+      // Otherwise keep Firestore version (it's newer)
+    });
     
-    return shape; // No local update, use Firestore version
-  });
+    // Convert back to array and sort by creation time
+    return Array.from(shapeMap.values()).sort((a, b) => a.createdAt - b.createdAt);
+  })();
   
   // Clean up local updates after Firestore sync (last write wins)
   // If Firestore has a newer or equal timestamp, prefer it over local updates
@@ -196,6 +225,19 @@ function App() {
     return unsubscribe;
   }, [user, subscribeToSelections]);
 
+  // Helper to add shape with local optimistic update
+  const addShapeOptimistic = useCallback((shape: Shape) => {
+    // Immediately add to local state for instant feedback
+    setLocalShapeUpdates(prev => {
+      const next = new Map(prev);
+      next.set(shape.id, shape);
+      return next;
+    });
+    
+    // Then sync to Firestore
+    addShape(shape);
+  }, [addShape]);
+
   const handleAddShape = useCallback((type: ShapeType) => {
     if (!user) return;
     
@@ -273,7 +315,7 @@ function App() {
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        addShapeOptimistic(shape);
         setLineInProgress({ shapeId: shape.id, startX: x, startY: y });
         // Don't exit placement mode yet
         return;
@@ -311,7 +353,7 @@ function App() {
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        addShapeOptimistic(shape);
         setRectangleInProgress({ shapeId: shape.id, startX: x, startY: y });
         // Don't exit placement mode yet
         return;
@@ -348,7 +390,7 @@ function App() {
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        addShapeOptimistic(shape);
         setCircleInProgress({ shapeId: shape.id, centerX: x, centerY: y });
         // Don't exit placement mode yet
         return;
@@ -402,7 +444,7 @@ function App() {
       shape.fontSize = 24;
     }
 
-    addShape(shape);
+    addShapeOptimistic(shape);
     setSelectedShapeId(shape.id);
     setSelectedShapeIds([shape.id]);
     setShapeToPlace(null); // Exit placement mode
@@ -486,7 +528,7 @@ function App() {
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
-          addShape(newShape);
+          addShapeOptimistic(newShape);
           newShapeIds.push(newShape.id);
         }
       });
@@ -512,7 +554,7 @@ function App() {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        addShape(newShape);
+        addShapeOptimistic(newShape);
         setSelectedShapeId(newShape.id);
         setSelectedShapeIds([newShape.id]);
         
@@ -625,7 +667,7 @@ function App() {
         if (currentShapeIds.has(shape.id)) {
           updateShape(shape);
         } else {
-          addShape(shape);
+          addShapeOptimistic(shape);
         }
       }
       
@@ -655,7 +697,7 @@ function App() {
         if (currentShapeIds.has(shape.id)) {
           updateShape(shape);
         } else {
-          addShape(shape);
+          addShapeOptimistic(shape);
         }
       }
       
@@ -692,7 +734,7 @@ function App() {
           points: [0, 0, x - lineInProgress.startX, y - lineInProgress.startY],
           updatedAt: Date.now(),
         };
-        updateShape(updatedShape);
+        handleShapeUpdate(updatedShape, false); // Use throttled updates for smooth rendering
       }
     }
     
@@ -713,7 +755,7 @@ function App() {
           height: Math.max(height, 1),
           updatedAt: Date.now(),
         };
-        updateShape(updatedShape);
+        handleShapeUpdate(updatedShape, false); // Use throttled updates for smooth rendering
       }
     }
     
@@ -731,10 +773,10 @@ function App() {
           radius: Math.max(radius, 1), // Ensure minimum radius of 1
           updatedAt: Date.now(),
         };
-        updateShape(updatedShape);
+        handleShapeUpdate(updatedShape, false); // Use throttled updates for smooth rendering
       }
     }
-  }, [updateCursor, lineInProgress, rectangleInProgress, circleInProgress, shapeToPlace, shapes, updateShape]);
+  }, [updateCursor, lineInProgress, rectangleInProgress, circleInProgress, shapeToPlace, shapes, handleShapeUpdate]);
 
   const handleViewportChange = useCallback((newViewport: ViewportState) => {
     setViewport(newViewport);

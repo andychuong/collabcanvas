@@ -30,10 +30,13 @@ dist-ssr
 
 # Firebase
 .firebase
-.firebaserc
 firebase-debug.log
+*serviceAccount*.json
+*.key
+*.pem
+# Note: .firebaserc is safe to commit (contains project ID only)
 
-# Documentation
+# Documentation (optional - remove if you want to push these)
 SETUP.md
 TESTING.md
 QUICKSTART.md
@@ -41,3 +44,6 @@ PROJECT_SUMMARY.md
 PRD.md
 DIAGRAMS.md
 ARCHITECTURE.md
+
+# User cleanup scripts (temporary)
+cleanup_user.js

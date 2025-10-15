@@ -12,6 +12,7 @@ interface UseCanvasInteractionProps {
   onExitSelectMode?: () => void;
   shapes?: Shape[];
   onBatchUpdate?: (shapes: Shape[]) => void;
+  onCursorMove?: (x: number, y: number) => void;
 }
 
 export const useCanvasInteraction = ({
@@ -24,6 +25,7 @@ export const useCanvasInteraction = ({
   onExitSelectMode,
   shapes = [],
   onBatchUpdate,
+  onCursorMove,
 }: UseCanvasInteractionProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPositions, setDragStartPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -107,6 +109,19 @@ export const useCanvasInteraction = ({
     const newX = node.x();
     const newY = node.y();
     
+    // Update cursor position during drag
+    const stage = node.getStage();
+    if (stage && onCursorMove) {
+      const pointerPos = stage.getPointerPosition();
+      if (pointerPos) {
+        const scale = stage.scaleX();
+        const stagePos = stage.position();
+        const canvasX = (pointerPos.x - stagePos.x) / scale;
+        const canvasY = (pointerPos.y - stagePos.y) / scale;
+        onCursorMove(canvasX, canvasY);
+      }
+    }
+    
     // If multiple shapes are selected, update all their positions in real-time
     if (selectedShapeIds.length > 1 && selectedShapeIds.includes(shape.id) && Object.keys(dragStartPositions).length > 0) {
       const deltaX = newX - dragStartPositions[shape.id].x;
@@ -150,7 +165,7 @@ export const useCanvasInteraction = ({
         updatedAt: Date.now(),
       }, false);
     }
-  }, [selectedShapeIds, dragStartPositions, onShapeUpdate, shapes]);
+  }, [selectedShapeIds, dragStartPositions, onShapeUpdate, shapes, onCursorMove]);
 
   const handleShapeDragEnd = useCallback((shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => {
     // Prevent stage drag event
