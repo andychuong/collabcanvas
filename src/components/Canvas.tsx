@@ -50,8 +50,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const stageRef = useRef<Konva.Stage>(null);
   const [stageSize, setStageSize] = useState({ 
-    width: Math.max(Math.min(window.innerWidth - 360, 1600), 400),
-    height: Math.max(Math.min(window.innerHeight - 140, 900), 300)
+    width: window.innerWidth,
+    height: window.innerHeight - 104 // 60px toolbar + 44px footer
   });
   
   // Selection box state
@@ -130,16 +130,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Handle window resize - calculate based on available space
   useEffect(() => {
     const handleResize = () => {
-      // Account for toolbar (60px), sidebar width (280px), gaps and padding
-      const availableWidth = window.innerWidth - 280 - 80; // sidebar + padding
-      const availableHeight = window.innerHeight - 60 - 80; // toolbar + padding
-      
-      const width = Math.min(availableWidth, 1600);
-      const height = Math.min(availableHeight, 900);
-      
+      // Full width and height minus toolbar (60px) and footer (44px)
       setStageSize({
-        width: Math.max(width, 400),
-        height: Math.max(height, 300),
+        width: window.innerWidth,
+        height: window.innerHeight - 104,
       });
     };
 
@@ -494,6 +488,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             onShapeDragMove={handleShapeDragMove}
             onShapeDragEnd={handleShapeDragEnd}
             onTextDblClick={handleTextDblClick}
+            onShapeUpdate={onShapeUpdate}
           />
 
           {/* Cursors layer */}

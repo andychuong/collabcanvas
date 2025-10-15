@@ -2,8 +2,18 @@
 export const GRID_SIZE = 20; // Size of each grid cell
 export const VIEWPORT_MULTIPLIER = 8; // Grid extends 8x the default viewport
 
-// Helper function to darken a color
+// Memoized cache for color darkening
+const darkenColorCache = new Map<string, string>();
+
+// Helper function to darken a color (memoized)
 export const darkenColor = (color: string, amount: number = 0.3): string => {
+  const cacheKey = `${color}_${amount}`;
+  
+  // Check cache first
+  if (darkenColorCache.has(cacheKey)) {
+    return darkenColorCache.get(cacheKey)!;
+  }
+  
   // Convert hex to RGB
   const hex = color.replace('#', '');
   const r = parseInt(hex.substring(0, 2), 16);
@@ -16,7 +26,12 @@ export const darkenColor = (color: string, amount: number = 0.3): string => {
   const newB = Math.max(0, Math.floor(b * (1 - amount)));
   
   // Convert back to hex
-  return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  const result = `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  
+  // Store in cache
+  darkenColorCache.set(cacheKey, result);
+  
+  return result;
 };
 
 // Helper function to clamp viewport position to grid boundaries

@@ -6,7 +6,7 @@ interface CursorLayerProps {
   cursors: CursorType[];
 }
 
-export const CursorLayer: React.FC<CursorLayerProps> = ({ cursors }) => {
+export const CursorLayer: React.FC<CursorLayerProps> = React.memo(({ cursors }) => {
   return (
     <Layer listening={false}>
       {cursors.map((cursor) => (
@@ -51,5 +51,5 @@ export const CursorLayer: React.FC<CursorLayerProps> = ({ cursors }) => {
       ))}
     </Layer>
   );
-};
+});
 

@@ -54,7 +54,7 @@ export const useCursors = (userId: string | null, userName: string, userColor: s
   const throttledUpdateCursor = useCallback(
     (() => {
       let lastUpdate = 0;
-      const THROTTLE_MS = 50; // 50ms = 20 updates per second
+      const THROTTLE_MS = 75; // 75ms = ~13 updates per second
 
       return (x: number, y: number) => {
         const now = Date.now();

@@ -55,14 +55,72 @@ export const useShapes = () => {
   const updateShape = useCallback(async (shape: Shape) => {
     try {
       const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shape.id);
+      
+      // Always use current timestamp for "last write wins"
+      // The real-time listener will ensure we see the most recent version
       await setDoc(shapeRef, {
         ...shape,
-        updatedAt: Date.now(),
+        updatedAt: Date.now(), // Fresh timestamp = this is the latest version
       }, { merge: true });
     } catch (error) {
       console.error('Error updating shape:', error);
     }
   }, []);
+
+  // Throttled version for drag operations with auto-flush
+  const throttledUpdateShape = useCallback(
+    (() => {
+      const pendingUpdates = new Map<string, Shape>();
+      const lastUpdateTime = new Map<string, number>();
+      let timeoutId: NodeJS.Timeout | null = null;
+      let finalFlushTimeoutId: NodeJS.Timeout | null = null;
+      const THROTTLE_MS = 50; // Update Firestore at most every 50ms
+      const FINAL_FLUSH_MS = 200; // After no updates for 200ms, force a final flush
+
+      const flush = () => {
+        if (pendingUpdates.size > 0) {
+          // Process all pending updates in batch
+          pendingUpdates.forEach((shape) => {
+            updateShape(shape);
+          });
+          pendingUpdates.clear();
+        }
+        timeoutId = null;
+      };
+
+      const scheduleFlush = () => {
+        if (!timeoutId) {
+          timeoutId = setTimeout(flush, THROTTLE_MS);
+        }
+      };
+
+      const scheduleFinalFlush = () => {
+        // Clear any existing final flush
+        if (finalFlushTimeoutId) {
+          clearTimeout(finalFlushTimeoutId);
+        }
+        
+        // Schedule a final flush after inactivity
+        finalFlushTimeoutId = setTimeout(() => {
+          flush();
+          finalFlushTimeoutId = null;
+        }, FINAL_FLUSH_MS);
+      };
+
+      return (shape: Shape) => {
+        // Store the latest version of this shape
+        pendingUpdates.set(shape.id, shape);
+        lastUpdateTime.set(shape.id, Date.now());
+
+        // Schedule regular flush
+        scheduleFlush();
+        
+        // Schedule final flush (resets on each update)
+        scheduleFinalFlush();
+      };
+    })(),
+    [updateShape]
+  );
 
   const deleteShape = useCallback(async (shapeId: string) => {
     try {
@@ -78,6 +136,7 @@ export const useShapes = () => {
     loading,
     addShape,
     updateShape,
+    throttledUpdateShape,
     deleteShape,
   };
 };

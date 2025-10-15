@@ -17,6 +17,7 @@ interface ToolbarProps {
   onlineUsers: UserType[];
   shapes: Shape[];
   onColorChange?: (color: string) => void;
+  onFillColorChange?: (color: string) => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
 }
@@ -30,7 +31,7 @@ const getInitials = (name: string): string => {
   return name.slice(0, 2).toUpperCase();
 };
 
-export const Toolbar: React.FC<ToolbarProps> = ({
+export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onAddShape,
   onDeleteSelected,
   onDuplicate,
@@ -44,6 +45,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onlineUsers,
   shapes,
   onColorChange,
+  onFillColorChange,
   isSelectMode,
   onToggleSelectMode,
 }) => {
@@ -53,9 +55,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const selectedShape = hasSelection && selectedShapeIds.length === 1 
     ? shapes.find(s => s.id === selectedShapeIds[0])
     : null;
-  const currentColor = selectedShape?.type === 'line' 
+  
+  // For stroke-based shapes (line, rectangle, circle), show stroke color
+  // For text, show fill color
+  const currentStrokeColor = selectedShape?.type === 'line' || selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle'
     ? selectedShape.stroke || '#000000'
     : selectedShape?.fill || '#000000';
+  
+  // Get fill color for rectangles and circles
+  const currentFillColor = selectedShape?.fill || 'transparent';
+  
+  // Check if selected shape is a rectangle or circle (shapes that can have both stroke and fill)
+  const canHaveFill = selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle';
   
   // Show max 10 users, then show "+N" for additional users
   const maxVisibleUsers = 10;
@@ -168,10 +179,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             {hasSelection && (
               <>
                 {selectedShapeIds.length === 1 && onColorChange && (
-                  <ColorPicker
-                    color={currentColor}
-                    onChange={onColorChange}
-                  />
+                  <>
+                    {/* Stroke Color Picker - shown as outline for shapes with fill */}
+                    <ColorPicker
+                      color={currentStrokeColor}
+                      onChange={onColorChange}
+                      outline={canHaveFill}
+                      tooltipText={canHaveFill ? 'Border Color' : 'Change Color'}
+                    />
+                    
+                    {/* Fill Color Picker (only for rectangles and circles) */}
+                    {canHaveFill && onFillColorChange && (
+                      <ColorPicker
+                        color={currentFillColor}
+                        onChange={onFillColorChange}
+                        tooltipText="Fill Color"
+                      />
+                    )}
+                  </>
                 )}
                 
                 <div className="relative group">
@@ -212,7 +237,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 title={user.id === currentUserId ? `${user.name} (you)` : user.name}
               >
                 <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-md border-2 border-white hover:scale-110 transition-transform cursor-pointer"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-black text-xs font-semibold shadow-md border-2 border-gray-400 hover:scale-110 transition-transform cursor-pointer"
                   style={{ backgroundColor: user.color }}
                 >
                   {getInitials(user.name)}
@@ -226,7 +251,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             ))}
             {additionalUsersCount > 0 && (
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-400 text-white text-xs font-semibold shadow-md border-2 border-white"
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-400 text-white text-xs font-semibold shadow-md border-2 border-gray-400"
                 title={`${additionalUsersCount} more user${additionalUsersCount > 1 ? 's' : ''} online`}
               >
                 +{additionalUsersCount}
@@ -250,5 +275,5 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
     </div>
   );
-};
+});
 

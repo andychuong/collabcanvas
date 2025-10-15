@@ -20,10 +20,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   onTextareaChange,
   onTextEditComplete,
 }) => {
-  if (!editingTextId) return null;
-
-  const editingShape = shapes.find(s => s.id === editingTextId);
-  
+  // Hooks must be called before any conditional returns
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const hasInitialized = React.useRef(false);
 
@@ -50,6 +47,11 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       textareaRef.current.style.width = Math.max(100, textareaRef.current.scrollWidth + 2) + 'px';
     }
   }, [textareaValue]);
+
+  // Early return after hooks
+  if (!editingTextId) return null;
+
+  const editingShape = shapes.find(s => s.id === editingTextId);
 
   return (
     <textarea
@@ -81,7 +83,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         fontFamily: 'Arial, sans-serif',
         lineHeight: 'normal',
         color: editingShape?.fill || '#000000',
-        caretColor: editingShape?.fill || '#000000',
+        caretColor: '#000000',
         zIndex: 1000,
         minWidth: '100px',
         whiteSpace: 'pre',

@@ -2,7 +2,7 @@ import React from 'react';
 import { Layer, Rect, Line } from 'react-konva';
 import { GRID_SIZE, VIEWPORT_MULTIPLIER } from '../../utils/canvasHelpers';
 
-export const CanvasGrid: React.FC = () => {
+export const CanvasGrid: React.FC = React.memo(() => {
   // Calculate workspace size as 8x the default viewport (1600x900)
   const workspaceWidth = 1600 * VIEWPORT_MULTIPLIER;
   const workspaceHeight = 900 * VIEWPORT_MULTIPLIER;
@@ -54,5 +54,5 @@ export const CanvasGrid: React.FC = () => {
       {lines}
     </Layer>
   );
-};
+});
 

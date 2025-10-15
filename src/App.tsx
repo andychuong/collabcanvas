@@ -11,20 +11,115 @@ import { useUndo } from './hooks/useUndo';
 import { Auth } from './components/Auth';
 import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
+import { Footer } from './components/Footer';
 import { Shape, ShapeType, ViewportState } from './types';
 import { getUserColor, getRandomColor } from './utils/colors';
 
+/**
+ * COLLABORATIVE EDITING & CONFLICT RESOLUTION STRATEGY:
+ * 
+ * This app uses a "Last Write Wins" (LWW) approach based on timestamps:
+ * 
+ * 1. LOCAL OPTIMISTIC UPDATES:
+ *    - When a user edits a shape, it updates immediately in local state
+ *    - This provides instant visual feedback with no lag
+ * 
+ * 2. THROTTLED FIRESTORE WRITES:
+ *    - Local updates are written to Firestore every 50ms (throttled)
+ *    - Each write gets a fresh timestamp = current time
+ *    - Reduces database load during rapid interactions (drag/resize)
+ * 
+ * 3. REAL-TIME SYNCHRONIZATION:
+ *    - All clients listen to Firestore via real-time snapshots
+ *    - When updates arrive, timestamps are compared
+ * 
+ * 4. CONFLICT RESOLUTION (Last Write Wins):
+ *    - If Firestore timestamp >= local timestamp: Use Firestore (another user won)
+ *    - If local timestamp > Firestore timestamp: Keep local (pending sync)
+ *    - This ensures the most recent change always wins
+ * 
+ * 5. EDGE CASES:
+ *    - If two users edit simultaneously, the last one to finish wins
+ *    - Users see conflicts resolved in real-time via console logs
+ *    - No data loss - just last change takes precedence
+ */
 function App() {
   const { user, loading: authLoading } = useAuth();
-  const { shapes, loading: shapesLoading, addShape, updateShape, deleteShape } = useShapes();
+  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, throttledUpdateShape, deleteShape } = useShapes();
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
-  const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: 1 });
+  
+  // Local optimistic updates for shapes being actively manipulated
+  const [localShapeUpdates, setLocalShapeUpdates] = useState<Map<string, Shape>>(new Map());
+  
+  // Merge Firestore shapes with local updates (last write wins based on timestamp)
+  const shapes = firestoreShapes.map(shape => {
+    const localUpdate = localShapeUpdates.get(shape.id);
+    
+    if (localUpdate) {
+      // If we have a local update, compare timestamps
+      // Only use local if it's actually newer (handles concurrent edits)
+      if (localUpdate.updatedAt > shape.updatedAt) {
+        return localUpdate; // Local is newer, use it (pending sync)
+      } else {
+        // Firestore is newer or equal - another user's change wins
+        if (localUpdate.updatedAt < shape.updatedAt) {
+          console.log(`Conflict resolved for shape ${shape.id}: Remote change (${new Date(shape.updatedAt).toLocaleTimeString()}) overwrites local change (${new Date(localUpdate.updatedAt).toLocaleTimeString()})`);
+        }
+        return shape; // Firestore is newer or equal, use it (last write wins)
+      }
+    }
+    
+    return shape; // No local update, use Firestore version
+  });
+  
+  // Clean up local updates after Firestore sync (last write wins)
+  // If Firestore has a newer or equal timestamp, prefer it over local updates
+  useEffect(() => {
+    if (localShapeUpdates.size > 0) {
+      setLocalShapeUpdates(prev => {
+        const next = new Map(prev);
+        let hasChanges = false;
+        
+        prev.forEach((localShape, id) => {
+          const firestoreShape = firestoreShapes.find(s => s.id === id);
+          
+          if (firestoreShape) {
+            // LAST WRITE WINS: If Firestore version is newer or equal, clear local update
+            // This ensures that updates from other users always take precedence when newer
+            if (firestoreShape.updatedAt >= localShape.updatedAt) {
+              next.delete(id);
+              hasChanges = true;
+            }
+            // If local is newer, it means we have pending changes that haven't synced yet
+            // Keep the local update until Firestore catches up
+          }
+        });
+        
+        return hasChanges ? next : prev;
+      });
+    }
+  }, [firestoreShapes, localShapeUpdates]);
+  
+  // Calculate initial centered viewport
+  const getInitialViewport = useCallback((): ViewportState => {
+    const width = window.innerWidth;
+    const height = window.innerHeight - 104; // 60px toolbar + 44px footer
+    return {
+      x: width / 2,
+      y: height / 2,
+      scale: 0.5, // 50% zoom
+    };
+  }, []);
+  
+  const [viewport, setViewport] = useState<ViewportState>(getInitialViewport());
   const [userName, setUserName] = useState('');
   const [userColor, setUserColor] = useState('');
   const [showMinimap, setShowMinimap] = useState(false);
   const [shapeToPlace, setShapeToPlace] = useState<ShapeType | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const [lineInProgress, setLineInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
+  const [rectangleInProgress, setRectangleInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   
   // Undo/Redo functionality
   const { undo, redo, canUndo, canRedo } = useUndo(shapes);
@@ -62,21 +157,44 @@ function App() {
 
   const handleAddShape = useCallback((type: ShapeType) => {
     if (!user) return;
+    
+    // Cancel any line in progress
+    if (lineInProgress) {
+      deleteShape(lineInProgress.shapeId);
+      setLineInProgress(null);
+    }
+    
+    // Cancel any rectangle in progress
+    if (rectangleInProgress) {
+      deleteShape(rectangleInProgress.shapeId);
+      setRectangleInProgress(null);
+    }
+    
     // Enter placement mode instead of creating shape immediately
     setShapeToPlace(type);
     setSelectedShapeId(null);
     setSelectedShapeIds([]);
     // Exit select mode when adding a shape
     setIsSelectMode(false);
-  }, [user]);
+  }, [user, lineInProgress, rectangleInProgress, deleteShape]);
 
   const handleToggleSelectMode = useCallback(() => {
     setIsSelectMode(prev => !prev);
     // Cancel placement mode when entering select mode
     if (!isSelectMode) {
       setShapeToPlace(null);
+      // Also cancel any line in progress
+      if (lineInProgress) {
+        deleteShape(lineInProgress.shapeId);
+        setLineInProgress(null);
+      }
+      // Also cancel any rectangle in progress
+      if (rectangleInProgress) {
+        deleteShape(rectangleInProgress.shapeId);
+        setRectangleInProgress(null);
+      }
     }
-  }, [isSelectMode]);
+  }, [isSelectMode, lineInProgress, rectangleInProgress, deleteShape]);
 
   const handleExitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -85,40 +203,120 @@ function App() {
   const handlePlaceShape = useCallback((x: number, y: number) => {
     if (!user || !shapeToPlace) return;
 
+    // Special handling for line placement (two-step process)
+    if (shapeToPlace === 'line') {
+      if (!lineInProgress) {
+        // First click: place the first anchor
+        const shape: Shape = {
+          id: uuidv4(),
+          type: 'line',
+          x,
+          y,
+          fill: '',
+          points: [0, 0, 0, 0], // Start with both points at the same location
+          stroke: '#000000',
+          strokeWidth: 2,
+          createdBy: user.uid,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        addShape(shape);
+        setLineInProgress({ shapeId: shape.id, startX: x, startY: y });
+        // Don't exit placement mode yet
+        return;
+      } else {
+        // Second click: finalize the line
+        setLineInProgress(null);
+        setShapeToPlace(null); // Exit placement mode
+        setSelectedShapeId(lineInProgress.shapeId);
+        setSelectedShapeIds([lineInProgress.shapeId]);
+        return;
+      }
+    }
+
+    // Special handling for rectangle placement (two-step process)
+    if (shapeToPlace === 'rectangle') {
+      if (!rectangleInProgress) {
+        // First click: place the first corner
+        const shape: Shape = {
+          id: uuidv4(),
+          type: 'rectangle',
+          x,
+          y,
+          fill: 'transparent',
+          width: 1,
+          height: 1,
+          stroke: '#000000',
+          strokeWidth: 2,
+          createdBy: user.uid,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        addShape(shape);
+        setRectangleInProgress({ shapeId: shape.id, startX: x, startY: y });
+        // Don't exit placement mode yet
+        return;
+      } else {
+        // Second click: finalize the rectangle
+        setRectangleInProgress(null);
+        setShapeToPlace(null);
+        setSelectedShapeId(rectangleInProgress.shapeId);
+        setSelectedShapeIds([rectangleInProgress.shapeId]);
+        return;
+      }
+    }
+
+    // Regular shape placement for other shapes
     const shape: Shape = {
       id: uuidv4(),
       type: shapeToPlace,
       x,
       y,
-      fill: shapeToPlace === 'text' ? '#000000' : getRandomColor(),
+      fill: shapeToPlace === 'text' ? '#000000' : 'transparent',
       createdBy: user.uid,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
-    if (shapeToPlace === 'rectangle') {
-      shape.width = 150;
-      shape.height = 100;
-    } else if (shapeToPlace === 'circle') {
+    if (shapeToPlace === 'circle') {
       shape.radius = 60;
+      shape.stroke = '#000000';
+      shape.strokeWidth = 2;
     } else if (shapeToPlace === 'text') {
       shape.text = 'Double click to edit';
       shape.fontSize = 24;
-    } else if (shapeToPlace === 'line') {
-      shape.points = [0, 0, 100, 0];
-      shape.stroke = getRandomColor();
-      shape.strokeWidth = 2;
     }
 
     addShape(shape);
     setSelectedShapeId(shape.id);
     setSelectedShapeIds([shape.id]);
     setShapeToPlace(null); // Exit placement mode
-  }, [user, shapeToPlace, addShape]);
+  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress]);
 
-  const handleShapeUpdate = useCallback((shape: Shape) => {
-    updateShape(shape);
-  }, [updateShape]);
+  // Use optimistic local updates with throttled Firestore writes
+  const handleShapeUpdate = useCallback((shape: Shape, immediate = false) => {
+    // Always update local state immediately for smooth visuals
+    setLocalShapeUpdates(prev => {
+      const next = new Map(prev);
+      next.set(shape.id, shape);
+      return next;
+    });
+    
+    // Write to Firestore (throttled or immediate)
+    if (immediate) {
+      updateShape(shape);
+      // Clear local update after immediate write
+      setLocalShapeUpdates(prev => {
+        const next = new Map(prev);
+        next.delete(shape.id);
+        return next;
+      });
+    } else {
+      throttledUpdateShape(shape);
+    }
+  }, [updateShape, throttledUpdateShape]);
 
   const handleDeleteSelected = useCallback(() => {
     // Delete all selected shapes
@@ -192,12 +390,32 @@ function App() {
       updatedAt: Date.now(),
     };
 
-    // For lines, update stroke; for other shapes, update fill
-    if (shape.type === 'line') {
+    // For shapes with strokes (lines, rectangles, circles), update stroke
+    // For text, update fill
+    if (shape.type === 'line' || shape.type === 'rectangle' || shape.type === 'circle') {
       updatedShape.stroke = color;
     } else {
       updatedShape.fill = color;
     }
+
+    updateShape(updatedShape);
+  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+
+  const handleFillColorChange = useCallback((color: string) => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update fill for rectangles and circles
+    if (shape.type !== 'rectangle' && shape.type !== 'circle') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      fill: color,
+      updatedAt: Date.now(),
+    };
 
     updateShape(updatedShape);
   }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
@@ -260,15 +478,49 @@ function App() {
       // Now sign out
       await signOut(auth);
       setSelectedShapeId(null);
-      setViewport({ x: 0, y: 0, scale: 1 });
+      setViewport(getInitialViewport());
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  }, [markOffline]);
+  }, [markOffline, getInitialViewport]);
 
   const handleCursorMove = useCallback((x: number, y: number) => {
     updateCursor(x, y);
-  }, [updateCursor]);
+    
+    // If we're in the middle of placing a line, update its second point
+    if (lineInProgress && shapeToPlace === 'line') {
+      const lineShape = shapes.find(s => s.id === lineInProgress.shapeId);
+      if (lineShape) {
+        const updatedShape: Shape = {
+          ...lineShape,
+          points: [0, 0, x - lineInProgress.startX, y - lineInProgress.startY],
+          updatedAt: Date.now(),
+        };
+        updateShape(updatedShape);
+      }
+    }
+    
+    // If we're in the middle of placing a rectangle, update its dimensions
+    if (rectangleInProgress && shapeToPlace === 'rectangle') {
+      const rectangleShape = shapes.find(s => s.id === rectangleInProgress.shapeId);
+      if (rectangleShape) {
+        const width = Math.abs(x - rectangleInProgress.startX);
+        const height = Math.abs(y - rectangleInProgress.startY);
+        const newX = Math.min(x, rectangleInProgress.startX);
+        const newY = Math.min(y, rectangleInProgress.startY);
+        
+        const updatedShape: Shape = {
+          ...rectangleShape,
+          x: newX,
+          y: newY,
+          width: Math.max(width, 1),
+          height: Math.max(height, 1),
+          updatedAt: Date.now(),
+        };
+        updateShape(updatedShape);
+      }
+    }
+  }, [updateCursor, lineInProgress, rectangleInProgress, shapeToPlace, shapes, updateShape]);
 
   const handleViewportChange = useCallback((newViewport: ViewportState) => {
     setViewport(newViewport);
@@ -288,13 +540,23 @@ function App() {
       // Spacebar - reset viewport to original view (only when not editing text)
       if (e.key === ' ' && !isEditingText) {
         e.preventDefault();
-        setViewport({ x: 0, y: 0, scale: 1 });
+        setViewport(getInitialViewport());
         return;
       }
 
       // Escape key - cancel placement mode or deselect
       if (e.key === 'Escape') {
-        if (shapeToPlace) {
+        if (lineInProgress) {
+          // Delete the in-progress line and cancel
+          deleteShape(lineInProgress.shapeId);
+          setLineInProgress(null);
+          setShapeToPlace(null);
+        } else if (rectangleInProgress) {
+          // Delete the in-progress rectangle and cancel
+          deleteShape(rectangleInProgress.shapeId);
+          setRectangleInProgress(null);
+          setShapeToPlace(null);
+        } else if (shapeToPlace) {
           setShapeToPlace(null);
         } else {
           setSelectedShapeId(null);
@@ -332,7 +594,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, selectedShapeIds, shapeToPlace, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode]);
+  }, [selectedShapeId, selectedShapeIds, shapeToPlace, lineInProgress, rectangleInProgress, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode, deleteShape, getInitialViewport]);
 
   if (authLoading) {
     return (
@@ -376,15 +638,16 @@ function App() {
         onlineUsers={onlineUsers}
         shapes={shapes}
         onColorChange={handleColorChange}
+        onFillColorChange={handleFillColorChange}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
       />
       
-      {/* Centered content container */}
-      <div className="flex items-center justify-center h-full pt-[60px]">
-        <div className="flex items-start gap-4 max-w-[2000px] w-full justify-center px-4">
-          {/* Canvas container */}
-          <div className="flex-shrink-0">
+      {/* Full-width content container */}
+      <div className="flex items-stretch justify-center h-full pt-[60px] pb-[44px]">
+        <div className="flex items-stretch w-full h-full">
+          {/* Canvas container - fills available space */}
+          <div className="flex-1 w-full h-full">
             <Canvas
               shapes={shapes}
               cursors={cursors}
@@ -404,30 +667,11 @@ function App() {
               onExitSelectMode={handleExitSelectMode}
             />
           </div>
-          
-          {/* Right sidebar with controls */}
-          <div className="space-y-4 flex-shrink-0">
-            <div className="bg-white border-4 border-gray-300 rounded-lg shadow-2xl p-4 w-64">
-              <h3 className="font-semibold text-gray-800 mb-2">Controls</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>➕ <strong>Add shape:</strong> Click button, then canvas</li>
-                <li>🖱️ <strong>Pan canvas:</strong> Left-click drag or middle mouse</li>
-                <li>🔍 <strong>Zoom:</strong> Mouse wheel</li>
-                <li>🏠 <strong>Reset view:</strong> Spacebar</li>
-                <li>✋ <strong>Move:</strong> Drag shapes</li>
-                <li>🎯 <strong>Select:</strong> Click shape</li>
-                <li>🔘 <strong>Select mode:</strong> V key or button (auto-exits after use)</li>
-                <li>📦 <strong>Multi-select:</strong> Select mode + drag box or Ctrl/Cmd + Click</li>
-                <li>✏️ <strong>Edit text:</strong> Double-click text</li>
-                <li>🗑️ <strong>Delete:</strong> Select + Delete key</li>
-                <li>↶ <strong>Undo:</strong> Ctrl/Cmd + Z</li>
-                <li>↷ <strong>Redo:</strong> Ctrl/Cmd + Y</li>
-                <li>⎋ <strong>Cancel/Deselect:</strong> Escape key</li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

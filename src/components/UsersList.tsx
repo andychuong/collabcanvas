@@ -9,7 +9,7 @@ interface UsersListProps {
 
 const USERS_PER_PAGE = 5;
 
-export const UsersList: React.FC<UsersListProps> = ({ users, currentUserId }) => {
+export const UsersList: React.FC<UsersListProps> = React.memo(({ users, currentUserId }) => {
   const [currentPage, setCurrentPage] = useState(0);
   
   const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
@@ -84,5 +84,5 @@ export const UsersList: React.FC<UsersListProps> = ({ users, currentUserId }) =>
       )}
     </div>
   );
-};
+});
 

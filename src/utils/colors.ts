@@ -1,9 +1,9 @@
 // Generate a random color for user cursors
 export const getUserColor = (userId: string): string => {
   const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788',
-    '#FF6F91', '#C44569', '#F78FB3', '#3DC1D3', '#FDA7DF'
+    '#FFB3BA', '#FFDFBA', '#FFFFBA', '#BAFFC9', '#BAE1FF',
+    '#E0BBE4', '#FFDFD3', '#C7CEEA', '#D4F1F4', '#FEC8D8',
+    '#B5EAD7', '#C8E6C9', '#FFF9C4', '#FFCCBC', '#D1C4E9'
   ];
   
   // Use user ID to deterministically pick a color

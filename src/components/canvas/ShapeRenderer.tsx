@@ -3,6 +3,9 @@ import { Layer, Rect, Circle, Text as KonvaText, Line } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from '../../types';
 import { darkenColor } from '../../utils/canvasHelpers';
+import { LineAnchors } from './LineAnchors';
+import { ResizeHandles } from './ResizeHandles';
+import { CircleResizeHandles } from './CircleResizeHandles';
 
 interface ShapeRendererProps {
   shapes: Shape[];
@@ -14,9 +17,10 @@ interface ShapeRendererProps {
   onShapeDragMove: (shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => void;
   onShapeDragEnd: (shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => void;
   onTextDblClick: (shape: Shape, e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onShapeUpdate: (shape: Shape) => void;
 }
 
-export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
+export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
   shapes,
   selectedShapeId,
   selectedShapeIds,
@@ -26,6 +30,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
   onShapeDragMove,
   onShapeDragEnd,
   onTextDblClick,
+  onShapeUpdate,
 }) => {
   return (
     <Layer>
@@ -33,7 +38,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
         const isSelected = shape.id === selectedShapeId || selectedShapeIds.includes(shape.id);
 
         if (shape.type === 'rectangle') {
-          const darkerBorderColor = isSelected && shape.fill ? darkenColor(shape.fill, 0.4) : undefined;
+          const hasStroke = shape.stroke && shape.strokeWidth;
+          const darkerBorderColor = isSelected && (hasStroke ? shape.stroke : shape.fill) ? darkenColor(hasStroke ? shape.stroke! : shape.fill, 0.4) : undefined;
           return (
             <Rect
               key={shape.id}
@@ -44,13 +50,13 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               height={shape.height || 100}
               fill={shape.fill}
               rotation={shape.rotation || 0}
-              draggable={true}
+              draggable={!isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={darkerBorderColor}
-              strokeWidth={isSelected ? 1.5 : 0}
+              stroke={hasStroke ? shape.stroke : darkerBorderColor}
+              strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
               shadowBlur={isSelected ? 10 : 0}
               shadowColor={darkerBorderColor}
             />
@@ -58,7 +64,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
         }
 
         if (shape.type === 'circle') {
-          const darkerBorderColor = isSelected && shape.fill ? darkenColor(shape.fill, 0.4) : undefined;
+          const hasStroke = shape.stroke && shape.strokeWidth;
+          const darkerBorderColor = isSelected && (hasStroke ? shape.stroke : shape.fill) ? darkenColor(hasStroke ? shape.stroke! : shape.fill, 0.4) : undefined;
           return (
             <Circle
               key={shape.id}
@@ -67,13 +74,13 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               y={shape.y}
               radius={shape.radius || 50}
               fill={shape.fill}
-              draggable={true}
+              draggable={!isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={darkerBorderColor}
-              strokeWidth={isSelected ? 1.5 : 0}
+              stroke={hasStroke ? shape.stroke : darkerBorderColor}
+              strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
               shadowBlur={isSelected ? 10 : 0}
               shadowColor={darkerBorderColor}
             />
@@ -121,7 +128,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               points={shape.points || [0, 0, 100, 100]}
               stroke={lineColor}
               strokeWidth={isSelected ? (shape.strokeWidth || 2) + 1 : (shape.strokeWidth || 2)}
-              draggable={true}
+              draggable={!isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
@@ -135,7 +142,43 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
 
         return null;
       })}
+      
+      {/* Render anchor points for selected lines */}
+      {shapes
+        .filter(shape => shape.type === 'line' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
+        .map(shape => (
+          <LineAnchors
+            key={`anchors-${shape.id}`}
+            shape={shape}
+            onUpdate={onShapeUpdate}
+          />
+        ))
+      }
+      
+      {/* Render resize handles for selected rectangles */}
+      {shapes
+        .filter(shape => shape.type === 'rectangle' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
+        .map(shape => (
+          <ResizeHandles
+            key={`handles-${shape.id}`}
+            shape={shape}
+            onUpdate={onShapeUpdate}
+          />
+        ))
+      }
+      
+      {/* Render resize handles for selected circles */}
+      {shapes
+        .filter(shape => shape.type === 'circle' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
+        .map(shape => (
+          <CircleResizeHandles
+            key={`circle-handles-${shape.id}`}
+            shape={shape}
+            onUpdate={onShapeUpdate}
+          />
+        ))
+      }
     </Layer>
   );
-};
+});
 
