@@ -26,6 +26,7 @@ export interface Shape {
 export interface User {
   id: string;
   name: string;
+  email?: string;
   color: string;
   online: boolean;
   lastSeen: number;

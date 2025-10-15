@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ref, onValue, set, onDisconnect, serverTimestamp } from 'firebase/database';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { rtdb, db } from '../firebase';
@@ -13,7 +13,7 @@ export const usePresence = (
 ) => {
   const [onlineUsers, setOnlineUsers] = useState<UserType[]>([]);
 
-  // Immediately add current user to online users list to avoid showing 0
+  // Optimistically add current user to avoid showing 0 on initial load
   useEffect(() => {
     if (userId && userName && userColor) {
       setOnlineUsers(prev => {
@@ -21,7 +21,7 @@ export const usePresence = (
         const existingUser = prev.find(u => u.id === userId);
         if (existingUser) return prev;
         
-        // Add current user immediately
+        // Add current user immediately (will be replaced by RTDB data once available)
         return [{
           id: userId,
           name: userName,
@@ -42,12 +42,8 @@ export const usePresence = (
     
     const setOnline = async () => {
       try {
-        await set(userStatusRef, {
-          online: true,
-          lastSeen: serverTimestamp(),
-        });
-
-        // Also update Firestore - use setDoc with merge to create if doesn't exist
+        // IMPORTANT: Update Firestore FIRST before RTDB
+        // This ensures user data is available when RTDB listeners fire
         const userDocRef = doc(db, 'users', userId);
         
         // Check if user doc exists, if not create it with basic info
@@ -73,6 +69,12 @@ export const usePresence = (
             lastSeen: Date.now(),
           }, { merge: true });
         }
+
+        // Now update Realtime Database (triggers listeners in other clients)
+        await set(userStatusRef, {
+          online: true,
+          lastSeen: serverTimestamp(),
+        });
       } catch (error) {
         console.error('Error setting user online:', error);
       }
@@ -80,20 +82,20 @@ export const usePresence = (
 
     const setOffline = async () => {
       try {
-        // Update both RTDB and Firestore when manually going offline (e.g., tab hidden)
-        await set(userStatusRef, {
-          online: false,
-          lastSeen: serverTimestamp(),
-        });
-        
+        // Update Firestore first, then RTDB (consistent with setOnline)
         const userDocRef = doc(db, 'users', userId);
         await setDoc(userDocRef, {
           online: false,
           lastSeen: Date.now(),
         }, { merge: true });
+        
+        await set(userStatusRef, {
+          online: false,
+          lastSeen: serverTimestamp(),
+        });
       } catch (error) {
-        // Log but don't throw - this might happen during logout
-        console.log('Could not set offline status (user may be logging out)');
+        // Silently fail - this might happen during logout
+        console.log('Could not set offline status');
       }
     };
 
@@ -118,20 +120,27 @@ export const usePresence = (
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      // Only update Firestore on cleanup - RTDB is handled by onDisconnect
+      
+      // Only update Firestore on cleanup (not RTDB)
+      // RTDB updates are handled by:
+      // 1. onDisconnect handler (for unexpected disconnections)
+      // 2. markOffline() function (for explicit logout)
+      // We can't update RTDB here because user may have already signed out
       const userDocRef = doc(db, 'users', userId);
       setDoc(userDocRef, {
         online: false,
         lastSeen: Date.now(),
       }, { merge: true }).catch(() => {
-        // Ignore errors during cleanup (user may have logged out)
-        console.log('Cleanup: Could not update presence (expected during logout)');
+        // Silently fail - expected during logout
       });
     };
   }, [userId]);
 
-  // Listen to presence changes
+  // Listen to presence changes - only when user is authenticated
   useEffect(() => {
+    // Don't set up listener if user is not authenticated
+    if (!userId) return;
+    
     const presenceRef = ref(rtdb, 'presence');
     
     const unsubscribeRTDB = onValue(
@@ -140,46 +149,39 @@ export const usePresence = (
         try {
           const presenceData = snapshot.val() || {};
           
-          // For simplicity, we'll just track online status from RTDB
-          // In production, you'd want to join this with Firestore user data
-          const users: UserType[] = [];
+          // Get IDs of users who are online according to RTDB
+          const onlineUserIds = Object.keys(presenceData).filter(
+            uid => (presenceData[uid] as any).online
+          );
           
-          for (const [uid, status] of Object.entries(presenceData)) {
-            if ((status as any).online) {
-              // Fetch user from Firestore
-              try {
-                const userDoc = await getDoc(doc(db, 'users', uid));
-                
-                if (userDoc.exists()) {
-                  users.push(userDoc.data() as UserType);
-                }
-              } catch (error) {
-                console.error(`Error fetching user ${uid}:`, error);
+          // Fetch all user data from Firestore in parallel
+          const userPromises = onlineUserIds.map(async (uid) => {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', uid));
+              if (userDoc.exists()) {
+                return userDoc.data() as UserType;
               }
+              return null;
+            } catch (error) {
+              console.error(`Error fetching user ${uid}:`, error);
+              return null;
             }
-          }
+          });
+          
+          const userResults = await Promise.all(userPromises);
+          const users = userResults.filter((u): u is UserType => u !== null);
 
-          setOnlineUsers(prevUsers => {
-            // Create a map of existing users by ID
-            const userMap = new Map(prevUsers.map(u => [u.id, u]));
+          // Update state with deduplicated users
+          setOnlineUsers(() => {
+            // Create a map to ensure each user appears only once
+            const userMap = new Map<string, UserType>();
             
-            // Update with new data from database
+            // Add users from RTDB (source of truth for online status)
             users.forEach(user => {
               userMap.set(user.id, user);
             });
             
-            // Get IDs of users who are online according to RTDB
-            const onlineUserIds = new Set(
-              Object.keys(presenceData).filter(uid => (presenceData[uid] as any).online)
-            );
-            
-            // Filter users: keep those in RTDB OR current user (to handle race condition)
-            const now = Date.now();
-            return Array.from(userMap.values()).filter(u => 
-              onlineUserIds.has(u.id) || 
-              u.id === userId || 
-              (now - (u.lastSeen || 0) < 2000)
-            );
+            return Array.from(userMap.values());
           });
         } catch (error) {
           console.error('Error processing presence data:', error);
@@ -193,8 +195,31 @@ export const usePresence = (
     return () => {
       unsubscribeRTDB();
     };
+  }, [userId]); // Re-run when userId changes (user logs in/out)
+
+  // Expose a manual cleanup function for explicit logout
+  const markOffline = useCallback(async () => {
+    if (!userId) return;
+    
+    const userStatusRef = ref(rtdb, `presence/${userId}`);
+    const userDocRef = doc(db, 'users', userId);
+    
+    try {
+      await Promise.all([
+        setDoc(userDocRef, {
+          online: false,
+          lastSeen: Date.now(),
+        }, { merge: true }),
+        set(userStatusRef, {
+          online: false,
+          lastSeen: serverTimestamp(),
+        })
+      ]);
+    } catch (error) {
+      console.error('Error marking user offline:', error);
+    }
   }, [userId]);
 
-  return { onlineUsers };
+  return { onlineUsers, markOffline };
 };
 

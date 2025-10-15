@@ -52,7 +52,7 @@ function App() {
     userColor
   );
 
-  const { onlineUsers } = usePresence(
+  const { onlineUsers, markOffline } = usePresence(
     user?.uid || null,
     userName,
     user?.email || undefined,
@@ -208,13 +208,17 @@ function App() {
 
   const handleLogout = useCallback(async () => {
     try {
+      // Mark user offline BEFORE signing out (while still authenticated)
+      await markOffline();
+      
+      // Now sign out
       await signOut(auth);
       setSelectedShapeId(null);
       setViewport({ x: 0, y: 0, scale: 1 });
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  }, []);
+  }, [markOffline]);
 
   const handleCursorMove = useCallback((x: number, y: number) => {
     updateCursor(x, y);

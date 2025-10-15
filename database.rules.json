@@ -1,13 +1,13 @@
 {
   "rules": {
+    ".read": "auth != null",
+    ".write": false,
     "cursors": {
-      ".read": "auth != null",
       "$userId": {
         ".write": "auth != null && auth.uid == $userId"
       }
     },
     "presence": {
-      ".read": "auth != null",
       "$userId": {
         ".write": "auth != null && auth.uid == $userId"
       }

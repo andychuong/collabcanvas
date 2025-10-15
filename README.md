@@ -42,10 +42,11 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - Create rectangles, circles, lines, and text elements
   - Drag shapes to move them around the canvas
   - Single-select or multi-select shapes (Ctrl/Cmd+Click)
-  - Delete shapes with keyboard shortcuts
+  - Delete shapes with keyboard shortcuts (Delete/Backspace)
   - Duplicate selected shapes
   - In-place text editing with double-click
   - Color-coded shapes with random colors
+  - Lines with customizable stroke width and color
   - Graph paper grid background for precision
 
 - **Real-Time Synchronization**
@@ -61,9 +62,10 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - Smooth cursor movement with interpolation
 
 - **Presence Awareness**
-  - Real-time list of online users
-  - Join/leave notifications
-  - Automatic away detection on tab blur
+  - Real-time list of online users with color-coded indicators
+  - Dual database sync (Firestore + Realtime Database)
+  - Automatic offline detection on tab blur
+  - Graceful cleanup on logout and disconnect
   - Connection status indicators
 
 - **State Persistence**
@@ -74,9 +76,16 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 - **Undo/Redo System**
   - Full history tracking (up to 50 states)
-  - Keyboard shortcuts (Ctrl/Cmd+Z, Ctrl/Cmd+Y)
-  - Works with all shape operations
+  - Keyboard shortcuts (Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z)
+  - Works with all shape operations (create, move, delete, edit)
+  - Syncs undo/redo state back to Firestore
   - Toolbar buttons with enable/disable states
+
+- **Visual Feedback**
+  - Minimap display during pan/zoom interactions
+  - Real-time zoom percentage indicator
+  - Visual selection highlighting
+  - Smooth cursor animations
 
 ## 🛠️ Tech Stack
 
@@ -100,12 +109,40 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 ### Installation
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Configure Firebase credentials in `.env` file
-4. Run development server: `npm run dev`
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd collab-canvas
+   ```
 
-For Firebase configuration, you'll need to create a Firebase project and add your credentials to a `.env` file in the root directory.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Firebase**
+   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+   - Enable Authentication (Email/Password)
+   - Create a Firestore database
+   - Create a Realtime Database
+   - Copy your Firebase config
+
+4. **Set up environment variables**
+   Create a `.env` file in the root directory:
+   ```env
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   VITE_FIREBASE_DATABASE_URL=your_database_url
+   ```
+
+5. **Run development server**
+   ```bash
+   npm run dev
+   ```
 
 ## 📐 Architecture
 
@@ -171,12 +208,14 @@ The MVP has been tested to meet all success criteria:
 
 - ✅ Application is deployed and publicly accessible
 - ✅ Users can authenticate with unique names
-- ✅ Canvas supports pan and zoom
-- ✅ Three shape types (rectangle, circle, text) can be created and moved
+- ✅ Canvas supports pan and zoom with minimap
+- ✅ Four shape types (rectangle, circle, line, text) can be created and moved
 - ✅ Multiple users see each other's changes in real-time (<100ms)
 - ✅ Multiplayer cursors show with name labels (<50ms)
-- ✅ Online users list shows who's connected
+- ✅ Online users list shows who's connected with color indicators
 - ✅ Canvas state persists after all users disconnect
+- ✅ Undo/Redo functionality fully implemented
+- ✅ Multi-select and duplicate features working
 
 ## 📊 Performance Metrics
 
