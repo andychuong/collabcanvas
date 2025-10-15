@@ -74,8 +74,14 @@ export const useCanvasInteraction = ({
     const evt = e.evt as MouseEvent;
     const selectModeActive = isSelectMode || evt.ctrlKey || evt.metaKey;
     
-    if (selectModeActive) {
-      // Cancel drag when in select mode
+    // Check if middle mouse button is pressed - prevent dragging to allow panning
+    const isMiddleButton = evt.button === 1;
+    
+    // Check if the shape being dragged is selected - only allow dragging selected shapes
+    const isShapeSelected = selectedShapeIds.includes(draggedShapeId);
+    
+    if (selectModeActive || isMiddleButton || !isShapeSelected) {
+      // Cancel drag when in select mode, middle mouse button is pressed, or shape is not selected
       e.target.stopDrag();
       return;
     }
@@ -97,12 +103,12 @@ export const useCanvasInteraction = ({
   }, [isSelectMode, selectedShapeIds, shapes]);
 
   const handleShapeDragMove = useCallback((shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+    
     // If multiple shapes are selected, update all their positions in real-time
     if (selectedShapeIds.length > 1 && selectedShapeIds.includes(shape.id) && Object.keys(dragStartPositions).length > 0) {
-      const node = e.target;
-      const newX = node.x();
-      const newY = node.y();
-      
       const deltaX = newX - dragStartPositions[shape.id].x;
       const deltaY = newY - dragStartPositions[shape.id].y;
       
@@ -122,8 +128,29 @@ export const useCanvasInteraction = ({
       });
       
       stage.batchDraw();
+      
+      // Update state for all selected shapes so handles/anchors move smoothly
+      shapes
+        .filter(s => selectedShapeIds.includes(s.id))
+        .forEach(s => {
+          onShapeUpdate({
+            ...s,
+            x: dragStartPositions[s.id].x + deltaX,
+            y: dragStartPositions[s.id].y + deltaY,
+            updatedAt: Date.now(),
+          }, false);
+        });
+    } else {
+      // Single shape drag - update state during drag for smooth handle movement
+      // Use immediate=false for throttled updates
+      onShapeUpdate({
+        ...shape,
+        x: newX,
+        y: newY,
+        updatedAt: Date.now(),
+      }, false);
     }
-  }, [selectedShapeIds, dragStartPositions]);
+  }, [selectedShapeIds, dragStartPositions, onShapeUpdate, shapes]);
 
   const handleShapeDragEnd = useCallback((shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => {
     // Prevent stage drag event

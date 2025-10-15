@@ -14,7 +14,7 @@ import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
 import { Footer } from './components/Footer';
 import { Shape, ShapeType, ViewportState } from './types';
-import { getUserColor } from './utils/colors';
+import { getUserColor, hexToRgba } from './utils/colors';
 
 /**
  * COLLABORATIVE EDITING & CONFLICT RESOLUTION STRATEGY:
@@ -118,9 +118,23 @@ function App() {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [lineInProgress, setLineInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   const [rectangleInProgress, setRectangleInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
+  const [circleInProgress, setCircleInProgress] = useState<{ shapeId: string; centerX: number; centerY: number } | null>(null);
+  const [circleJustFinalized, setCircleJustFinalized] = useState<string | null>(null); // Track circle ID that was just finalized
   
   // Undo/Redo functionality
   const { undo, redo, canUndo, canRedo, addToHistory, finishRestoring } = useUndo(shapes);
+
+  // Add to history when circle is finalized and Firestore has synced
+  useEffect(() => {
+    if (circleJustFinalized) {
+      // Wait a moment for Firestore to sync, then add to history
+      const timer = setTimeout(() => {
+        addToHistory(shapes);
+        setCircleJustFinalized(null);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [circleJustFinalized, shapes, addToHistory]);
 
   // Fetch user data
   useEffect(() => {
@@ -197,13 +211,19 @@ function App() {
       setRectangleInProgress(null);
     }
     
+    // Cancel any circle in progress
+    if (circleInProgress) {
+      deleteShape(circleInProgress.shapeId);
+      setCircleInProgress(null);
+    }
+    
     // Enter placement mode instead of creating shape immediately
     setShapeToPlace(type);
     setSelectedShapeId(null);
     setSelectedShapeIds([]);
     // Exit select mode when adding a shape
     setIsSelectMode(false);
-  }, [user, lineInProgress, rectangleInProgress, deleteShape]);
+  }, [user, lineInProgress, rectangleInProgress, circleInProgress, deleteShape]);
 
   const handleToggleSelectMode = useCallback(() => {
     setIsSelectMode(prev => !prev);
@@ -220,8 +240,13 @@ function App() {
         deleteShape(rectangleInProgress.shapeId);
         setRectangleInProgress(null);
       }
+      // Also cancel any circle in progress
+      if (circleInProgress) {
+        deleteShape(circleInProgress.shapeId);
+        setCircleInProgress(null);
+      }
     }
-  }, [isSelectMode, lineInProgress, rectangleInProgress, deleteShape]);
+  }, [isSelectMode, lineInProgress, rectangleInProgress, circleInProgress, deleteShape]);
 
   const handleExitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -276,7 +301,7 @@ function App() {
           type: 'rectangle',
           x,
           y,
-          fill: 'transparent',
+          fill: hexToRgba('#D0D0D0', 0.1), // Light gray with 90% transparency (10% opacity)
           width: 1,
           height: 1,
           stroke: '#000000',
@@ -305,7 +330,62 @@ function App() {
       }
     }
 
-    // Regular shape placement for other shapes
+    // Special handling for circle placement (two-step process)
+    if (shapeToPlace === 'circle') {
+      if (!circleInProgress) {
+        // First click: place the center
+        const shape: Shape = {
+          id: uuidv4(),
+          type: 'circle',
+          x,
+          y,
+          fill: hexToRgba('#D0D0D0', 0.1), // Light gray with 90% transparency (10% opacity)
+          radius: 1, // Start with minimal radius
+          stroke: '#000000',
+          strokeWidth: 2,
+          createdBy: user.uid,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        addShape(shape);
+        setCircleInProgress({ shapeId: shape.id, centerX: x, centerY: y });
+        // Don't exit placement mode yet
+        return;
+      } else {
+        // Second click: finalize the circle
+        // Calculate and set the final radius at click position
+        const dx = x - circleInProgress.centerX;
+        const dy = y - circleInProgress.centerY;
+        const finalRadius = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+        
+        // Find the circle (it should be in shapes from first click)
+        const circleShape = shapes.find(s => s.id === circleInProgress.shapeId);
+        
+        if (circleShape) {
+          const finalShape: Shape = {
+            ...circleShape,
+            radius: finalRadius,
+            updatedAt: Date.now(),
+          };
+          
+          // Write the final state immediately
+          updateShape(finalShape);
+          
+          // Flag this circle as just finalized - useEffect will add to history when synced
+          setCircleJustFinalized(circleInProgress.shapeId);
+        }
+        
+        setCircleInProgress(null);
+        setShapeToPlace(null);
+        setSelectedShapeId(circleInProgress.shapeId);
+        setSelectedShapeIds([circleInProgress.shapeId]);
+        
+        return;
+      }
+    }
+
+    // Regular shape placement for other shapes (text only now)
     const shape: Shape = {
       id: uuidv4(),
       type: shapeToPlace,
@@ -317,11 +397,7 @@ function App() {
       updatedAt: Date.now(),
     };
 
-    if (shapeToPlace === 'circle') {
-      shape.radius = 60;
-      shape.stroke = '#000000';
-      shape.strokeWidth = 2;
-    } else if (shapeToPlace === 'text') {
+    if (shapeToPlace === 'text') {
       shape.text = 'Double click to edit';
       shape.fontSize = 24;
     }
@@ -335,7 +411,7 @@ function App() {
     setTimeout(() => {
       addToHistory([...shapes, shape]);
     }, 100);
-  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress, shapes, addToHistory]);
+  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress, circleInProgress, shapes, addToHistory]);
 
   // Use optimistic local updates with throttled Firestore writes
   const handleShapeUpdate = useCallback((shape: Shape, immediate = false) => {
@@ -640,7 +716,25 @@ function App() {
         updateShape(updatedShape);
       }
     }
-  }, [updateCursor, lineInProgress, rectangleInProgress, shapeToPlace, shapes, updateShape]);
+    
+    // If we're in the middle of placing a circle, update its radius
+    if (circleInProgress && shapeToPlace === 'circle') {
+      const circleShape = shapes.find(s => s.id === circleInProgress.shapeId);
+      if (circleShape) {
+        // Calculate radius as distance from center to current mouse position
+        const dx = x - circleInProgress.centerX;
+        const dy = y - circleInProgress.centerY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        
+        const updatedShape: Shape = {
+          ...circleShape,
+          radius: Math.max(radius, 1), // Ensure minimum radius of 1
+          updatedAt: Date.now(),
+        };
+        updateShape(updatedShape);
+      }
+    }
+  }, [updateCursor, lineInProgress, rectangleInProgress, circleInProgress, shapeToPlace, shapes, updateShape]);
 
   const handleViewportChange = useCallback((newViewport: ViewportState) => {
     setViewport(newViewport);
@@ -712,6 +806,11 @@ function App() {
           deleteShape(rectangleInProgress.shapeId);
           setRectangleInProgress(null);
           setShapeToPlace(null);
+        } else if (circleInProgress) {
+          // Delete the in-progress circle and cancel
+          deleteShape(circleInProgress.shapeId);
+          setCircleInProgress(null);
+          setShapeToPlace(null);
         } else if (shapeToPlace) {
           setShapeToPlace(null);
         } else {
@@ -750,7 +849,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, selectedShapeIds, shapeToPlace, lineInProgress, rectangleInProgress, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode, deleteShape, getInitialViewport, shapes, handleShapeUpdate]);
+  }, [selectedShapeId, selectedShapeIds, shapeToPlace, lineInProgress, rectangleInProgress, circleInProgress, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode, deleteShape, getInitialViewport, shapes, handleShapeUpdate]);
 
   if (authLoading) {
     return (

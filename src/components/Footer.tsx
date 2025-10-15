@@ -7,7 +7,10 @@ export const Footer: React.FC = React.memo(() => {
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-sm z-10">
+      <footer className="fixed bottom-0 left-0 right-0 bg-white shadow-sm z-10" style={{
+        borderTop: '2px solid #9ca3af',
+        background: 'linear-gradient(to top, #ffffff 0%, #ffffff 80%, #e5e7eb 100%)'
+      }}>
         <div className="px-4 py-2">
           <div className="flex items-center justify-between text-sm text-gray-600">
             {/* Left side - Made with love */}
@@ -48,8 +51,8 @@ export const Footer: React.FC = React.memo(() => {
                 <h3 className="font-semibold text-lg text-gray-800 mb-3 border-b pb-2">🎨 Drawing Shapes</h3>
                 <ul className="space-y-3 text-sm text-gray-600">
                   <li className="pl-4">
-                    <div className="font-semibold text-gray-700 mb-1">➕ Add Basic Shapes (Circle/Text)</div>
-                    <div>Click the shape button in the toolbar (top), then click anywhere on the canvas to place it. The shape will appear at your click location.</div>
+                    <div className="font-semibold text-gray-700 mb-1">📝 Add Text</div>
+                    <div>Click the Text button in the toolbar, then click anywhere on the canvas to place it. The text will appear at your click location.</div>
                   </li>
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">📏 Draw a Line</div>
@@ -58,6 +61,10 @@ export const Footer: React.FC = React.memo(() => {
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">▭ Draw a Rectangle</div>
                     <div>Click the Rectangle button, then click to set the first corner. Move your mouse (you'll see the rectangle grow), then click to set the opposite corner. Perfect for creating boxes and frames.</div>
+                  </li>
+                  <li className="pl-4">
+                    <div className="font-semibold text-gray-700 mb-1">⚪ Draw a Circle</div>
+                    <div>Click the Circle button, then click to place the center point. Move your mouse away from the center (you'll see the circle grow), then click again to set the radius. The circle is now created and can be moved or resized.</div>
                   </li>
                 </ul>
               </section>

@@ -19,6 +19,7 @@ interface ShapeRendererProps {
   onTextDblClick: (shape: Shape, e: Konva.KonvaEventObject<MouseEvent>) => void;
   onShapeUpdate: (shape: Shape) => void;
   otherUsersSelections?: Map<string, { shapeIds: string[]; color: string; userName: string }>;
+  isDragging?: boolean;
 }
 
 export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
@@ -33,6 +34,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
   onTextDblClick,
   onShapeUpdate,
   otherUsersSelections = new Map(),
+  isDragging = false,
 }) => {
   // Check if a shape is selected by another user
   const getOtherUserSelection = (shapeId: string): { color: string; userName: string } | null => {
@@ -62,7 +64,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               height={shape.height || 100}
               fill={shape.fill}
               rotation={shape.rotation || 0}
-              draggable={!isSelected}
+              draggable={isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
@@ -87,7 +89,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               y={shape.y}
               radius={shape.radius || 50}
               fill={shape.fill}
-              draggable={true}
+              draggable={isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
@@ -114,7 +116,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               text={shape.text || 'Text'}
               fontSize={shape.fontSize || 24}
               fill={shape.fill}
-              draggable={!isEditing}
+              draggable={isSelected && !isEditing}
               visible={!isEditing}
               onClick={(e) => !isEditing && onShapeClick(shape.id, e)}
               onDblClick={(e) => {
@@ -143,7 +145,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               points={shape.points || [0, 0, 100, 100]}
               stroke={lineColor}
               strokeWidth={isSelected ? (shape.strokeWidth || 2) + 1 : (shape.strokeWidth || 2)}
-              draggable={!isSelected}
+              draggable={isSelected}
               onClick={(e) => onShapeClick(shape.id, e)}
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
@@ -159,8 +161,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         return null;
       })}
       
-      {/* Render anchor points for selected lines */}
-      {shapes
+      {/* Render anchor points for selected lines (hidden while dragging) */}
+      {!isDragging && shapes
         .filter(shape => shape.type === 'line' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
         .map(shape => (
           <LineAnchors
@@ -171,8 +173,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         ))
       }
       
-      {/* Render resize handles for selected rectangles */}
-      {shapes
+      {/* Render resize handles for selected rectangles (hidden while dragging) */}
+      {!isDragging && shapes
         .filter(shape => shape.type === 'rectangle' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
         .map(shape => (
           <ResizeHandles
@@ -183,8 +185,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         ))
       }
       
-      {/* Render resize handles for selected circles */}
-      {shapes
+      {/* Render resize handles for selected circles (hidden while dragging) */}
+      {!isDragging && shapes
         .filter(shape => shape.type === 'circle' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
         .map(shape => (
           <CircleResizeHandles

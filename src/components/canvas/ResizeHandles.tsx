@@ -91,6 +91,15 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
   }, [shape, calculateNewDimensions, onUpdate]);
 
   const handleCornerDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    // Check if middle mouse button is pressed - prevent dragging to allow panning
+    const evt = e.evt as MouseEvent;
+    const isMiddleButton = evt.button === 1;
+    
+    if (isMiddleButton) {
+      e.target.stopDrag();
+      return;
+    }
+    
     e.cancelBubble = true;
   }, []);
 

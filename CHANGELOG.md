@@ -1,6 +1,34 @@
 # CollabCanvas Changelog
 
-## Recent Major Enhancements (Current Session)
+## Latest Updates
+
+### 🎯 Interaction & UX Improvements
+
+#### Enhanced Panning Controls
+- **Middle Mouse Button Panning**: Middle-click now always pans the canvas, even when shapes are selected
+- **Universal Pan Override**: Middle mouse button takes priority over all other interactions (dragging, resizing, anchors)
+- **Consistent Behavior**: Provides dedicated pan control regardless of current tool or selection state
+
+#### Smart Shape Selection & Movement
+- **Selection-Based Dragging**: Only selected shapes can be moved - prevents accidental movement of unselected objects
+- **Visual Consistency**: Draggable property synchronized with selection state across all shape types
+- **Clear Feedback**: Shapes must be selected before they can be dragged
+
+#### Clean Drag Experience
+- **Hidden Handles During Drag**: Resize handles and line anchors automatically hide while dragging shapes
+- **Reduced Visual Clutter**: Provides cleaner view during movement operations
+- **Smooth Transitions**: Handles reappear immediately when drag ends
+
+#### Improved Default Styling
+- **Subtle Fill Colors**: New rectangles and circles created with light gray fill (#D0D0D0) at 90% transparency
+- **Professional Appearance**: Barely-there tint that allows content underneath to show through
+- **User Customizable**: Default can be changed via color pickers in toolbar
+
+#### UI Polish
+- **Footer Styling**: Added matching 2px medium gray border to footer (consistent with toolbar design)
+- **Visual Symmetry**: Creates balanced frame around canvas area
+
+## Recent Major Enhancements (Previous Session)
 
 ### 🎨 Advanced Shape Creation & Editing
 

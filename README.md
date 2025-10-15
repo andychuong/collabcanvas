@@ -36,7 +36,8 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 - **Interactive Canvas**
   - Large workspace (5000x5000 virtual space with boundary clamping)
-  - Smooth pan functionality (click and drag, cannot pan beyond grid)
+  - Smooth pan functionality (click and drag, or middle mouse button, cannot pan beyond grid)
+  - **Middle Mouse Button Panning**: Dedicated pan control that works even when shapes are selected
   - Mouse wheel zoom with smooth scaling (10% - 500%)
   - Default viewport centered at 50% zoom
   - Viewport management for optimal pan/zoom state
@@ -45,8 +46,9 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 - **Advanced Shape Creation**
   - **Two-Step Line Drawing**: Click to place first anchor, move mouse to preview, click to place second anchor
   - **Two-Step Rectangle Drawing**: Click for first corner, drag to preview, click for second corner
-  - **Instant Shape Placement**: Circles and text placed immediately at click location
-  - **Smart Defaults**: Rectangles/circles created with transparent fill and black border, lines created with black stroke
+  - **Two-Step Circle Drawing**: Click to place center, move mouse to set radius, click to finalize
+  - **Instant Text Placement**: Text placed immediately at click location
+  - **Smart Defaults**: Rectangles/circles created with light gray fill (90% transparent) and black border, lines created with black stroke
 
 - **Comprehensive Shape Editing**
   - **Line Resizing**: Drag anchor points to change line direction and length while other end stays fixed
@@ -54,7 +56,8 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - **Circle Resizing**: Drag edge handles (top/right/bottom/left) to grow or shrink radius
   - **Text Editing**: Double-click for in-place editing with black cursor indicator
   - **Font Size Control**: Increase/decrease text size (8-200px) with +/- buttons or direct input
-  - **Drag to Move**: Move any shape by dragging its center/body
+  - **Smart Dragging**: Only selected shapes can be moved (prevents accidental movement)
+  - **Clean Drag Experience**: Resize handles automatically hide during movement for reduced clutter
   - **Precise Positioning**: X/Y coordinate inputs in toolbar for exact placement
   - **Keyboard Nudging**: Arrow keys move shapes by 1px, Shift+Arrow by 10px
   - **Visual Feedback**: Handles appear on selected shapes for intuitive interaction
@@ -120,6 +123,7 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 - **Modern UI & UX**
   - **Unified Toolbar Design**: All buttons match at 40px height for visual consistency
   - **Gradient Styling**: Toolbar has subtle gradient (white to light grey) with medium grey bottom border
+  - **Symmetrical Footer**: Matching 2px grey border on top creates balanced frame around canvas
   - **Icon-First Interface**: Large, clear icons with hover tooltips
   - **Contextual Controls**: Tool options appear only when relevant
   - **Grid Background**: Graph paper style for precision alignment
@@ -220,7 +224,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
    - **Circles**: Drag edge handles (top/right/bottom/left) to grow/shrink
 
 5. **Navigate the canvas**:
-   - **Pan**: Click and drag empty space (cannot pan beyond grid boundaries)
+   - **Pan**: Click and drag empty space, or use middle mouse button (cannot pan beyond grid boundaries)
+   - **Middle Mouse Pan**: Works even when shapes are selected, provides dedicated pan control
    - **Zoom**: Mouse wheel (10%-500% range, default 50%)
    - **Reset**: Press Spacebar to return to default centered view
 

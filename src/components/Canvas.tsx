@@ -110,6 +110,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [onShapeUpdate]);
 
   const {
+    isDragging,
     handleShapeClick,
     handleShapeDragStart,
     handleShapeDragMove,
@@ -512,6 +513,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             onTextDblClick={handleTextDblClick}
             onShapeUpdate={onShapeUpdate}
             otherUsersSelections={otherUsersSelections}
+            isDragging={isDragging}
           />
 
           {/* Cursors layer */}
