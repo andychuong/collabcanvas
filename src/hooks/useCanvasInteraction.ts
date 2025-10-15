@@ -4,7 +4,7 @@ import { Shape } from '../types';
 
 interface UseCanvasInteractionProps {
   stageRef: React.RefObject<Konva.Stage>;
-  onShapeUpdate: (shape: Shape) => void;
+  onShapeUpdate: (shape: Shape, immediate?: boolean) => void;
   onShapeSelect: (shapeId: string | null) => void;
   onMultiSelect?: (shapeIds: string[]) => void;
   selectedShapeIds?: string[];
@@ -153,13 +153,13 @@ export const useCanvasInteraction = ({
       
       setDragStartPositions({});
     } else {
-      // Single shape drag
+      // Single shape drag - use immediate update for undo/redo
       onShapeUpdate({
         ...shape,
         x: newX,
         y: newY,
         updatedAt: Date.now(),
-      });
+      }, true); // immediate = true so undo history captures it
     }
     
     setIsDragging(false);

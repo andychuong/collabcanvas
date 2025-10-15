@@ -15,7 +15,7 @@ import { clampViewportPosition } from '../utils/canvasHelpers';
 interface CanvasProps {
   shapes: Shape[];
   cursors: CursorType[];
-  onShapeUpdate: (shape: Shape) => void;
+  onShapeUpdate: (shape: Shape, immediate?: boolean) => void;
   onShapeSelect: (shapeId: string | null) => void;
   onMultiSelect?: (shapeIds: string[]) => void;
   selectedShapeId: string | null;
@@ -29,6 +29,7 @@ interface CanvasProps {
   onPlaceShape: (x: number, y: number) => void;
   isSelectMode?: boolean;
   onExitSelectMode?: () => void;
+  otherUsersSelections?: Map<string, { shapeIds: string[]; color: string; userName: string }>;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -48,6 +49,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onPlaceShape,
   isSelectMode = false,
   onExitSelectMode,
+  otherUsersSelections = new Map(),
 }) => {
   const stageRef = useRef<Konva.Stage>(null);
   const [stageSize, setStageSize] = useState({ 
@@ -96,9 +98,15 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isSelectMode, onExitSelectMode]);
 
-  // Handle batch update for group dragging
+  // Handle batch update for group dragging - use immediate updates for undo/redo
   const handleBatchUpdate = useCallback((updatedShapes: Shape[]) => {
-    updatedShapes.forEach(shape => onShapeUpdate(shape));
+    // Update all shapes without triggering individual history entries
+    updatedShapes.forEach(shape => onShapeUpdate(shape, false));
+    // Then trigger one history entry for the batch with immediate=true on the last shape
+    if (updatedShapes.length > 0) {
+      const lastShape = updatedShapes[updatedShapes.length - 1];
+      onShapeUpdate(lastShape, true);
+    }
   }, [onShapeUpdate]);
 
   const {
@@ -503,6 +511,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             onShapeDragEnd={handleShapeDragEnd}
             onTextDblClick={handleTextDblClick}
             onShapeUpdate={onShapeUpdate}
+            otherUsersSelections={otherUsersSelections}
           />
 
           {/* Cursors layer */}

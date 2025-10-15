@@ -5,7 +5,7 @@ import { Shape } from '../../types';
 
 interface CircleResizeHandlesProps {
   shape: Shape;
-  onUpdate: (shape: Shape) => void;
+  onUpdate: (shape: Shape, immediate?: boolean) => void;
 }
 
 type Direction = 'top' | 'right' | 'bottom' | 'left';
@@ -45,14 +45,14 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
     };
   }, [shape.id, shape.x, shape.y, shape.type, shape.radius]);
 
-  const handleDragMove = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
-    if (shape.type !== 'circle' || !shape.radius) return;
+  const calculateNewRadius = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
+    if (shape.type !== 'circle' || !shape.radius) return null;
     const node = e.target;
     const stage = node.getStage();
-    if (!stage) return;
+    if (!stage) return null;
     
     const pointerPos = stage.getPointerPosition();
-    if (!pointerPos) return;
+    if (!pointerPos) return null;
 
     // Get the circle's current position
     const circleNode = stage.findOne(`#${shape.id}`) as Konva.Circle;
@@ -93,20 +93,38 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
     // Reset the handle position to stay on the perimeter
     node.position(newHandlePos);
 
+    return newRadius;
+  }, [shape]);
+
+  const handleDragMove = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
+    const newRadius = calculateNewRadius(direction, e);
+    if (newRadius === null) return;
+
+    // Use throttled update during drag (immediate=false)
     onUpdate({
       ...shape,
       radius: newRadius,
       updatedAt: Date.now(),
-    });
-  }, [shape, onUpdate]);
+    }, false);
+  }, [shape, calculateNewRadius, onUpdate]);
 
   const handleDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
   }, []);
 
-  const handleDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+  const handleDragEnd = useCallback((direction: Direction, e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
-  }, []);
+    
+    const newRadius = calculateNewRadius(direction, e);
+    if (newRadius === null) return;
+
+    // Use immediate update on drag end for undo/redo
+    onUpdate({
+      ...shape,
+      radius: newRadius,
+      updatedAt: Date.now(),
+    }, true);
+  }, [shape, calculateNewRadius, onUpdate]);
 
   // After all hooks, check if we should render
   if (shape.type !== 'circle' || !shape.radius) {
@@ -137,7 +155,7 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
         draggable={true}
         onDragStart={handleDragStart}
         onDragMove={(e) => handleDragMove('top', e)}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(e) => handleDragEnd('top', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -166,7 +184,7 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
         draggable={true}
         onDragStart={handleDragStart}
         onDragMove={(e) => handleDragMove('right', e)}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(e) => handleDragEnd('right', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -195,7 +213,7 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
         draggable={true}
         onDragStart={handleDragStart}
         onDragMove={(e) => handleDragMove('bottom', e)}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(e) => handleDragEnd('bottom', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -224,7 +242,7 @@ export const CircleResizeHandles: React.FC<CircleResizeHandlesProps> = ({ shape,
         draggable={true}
         onDragStart={handleDragStart}
         onDragMove={(e) => handleDragMove('left', e)}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(e) => handleDragEnd('left', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"

@@ -5,7 +5,7 @@ import { Shape } from '../../types';
 
 interface LineAnchorsProps {
   shape: Shape;
-  onUpdate: (shape: Shape) => void;
+  onUpdate: (shape: Shape, immediate?: boolean) => void;
 }
 
 export const LineAnchors: React.FC<LineAnchorsProps> = ({ shape, onUpdate }) => {
@@ -29,8 +29,6 @@ export const LineAnchors: React.FC<LineAnchorsProps> = ({ shape, onUpdate }) => 
 
     // Update the points array based on which anchor is being dragged
     let newPoints: number[];
-    let newShapeX = shape.x;
-    let newShapeY = shape.y;
 
     if (anchorIndex === 0) {
       // Dragging start point (first anchor)
@@ -52,12 +50,12 @@ export const LineAnchors: React.FC<LineAnchorsProps> = ({ shape, onUpdate }) => 
       ];
     }
 
-    // Update the shape in real-time
+    // Update the shape in real-time with throttled updates
     onUpdate({
       ...shape,
       points: newPoints,
       updatedAt: Date.now(),
-    });
+    }, false);
   }, [shape, points, onUpdate]);
 
   const handleAnchorDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
@@ -91,11 +89,12 @@ export const LineAnchors: React.FC<LineAnchorsProps> = ({ shape, onUpdate }) => 
       ];
     }
 
+    // Use immediate update on drag end for undo/redo
     onUpdate({
       ...shape,
       points: newPoints,
       updatedAt: Date.now(),
-    });
+    }, true);
   }, [shape, points, onUpdate]);
 
   return (

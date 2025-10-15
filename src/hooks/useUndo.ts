@@ -1,78 +1,155 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useReducer, useCallback, useRef } from 'react';
 import { Shape, HistoryState } from '../types';
 
 const MAX_HISTORY = 50;
 
-export const useUndo = (initialShapes: Shape[]) => {
-  const [history, setHistory] = useState<HistoryState[]>([{
-    shapes: initialShapes,
-    timestamp: Date.now()
-  }]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const isRestoringRef = useRef(false); // Flag to prevent history updates during undo/redo
+type UndoState = {
+  history: HistoryState[];
+  currentIndex: number;
+};
 
-  // Update history when shapes change externally (but not during undo/redo)
-  useEffect(() => {
-    if (isRestoringRef.current) {
-      isRestoringRef.current = false;
-      return;
-    }
-    
-    if (history.length === 0 || JSON.stringify(initialShapes) !== JSON.stringify(history[currentIndex]?.shapes)) {
-      addToHistory(initialShapes);
-    }
-  }, [initialShapes]);
+type UndoAction =
+  | { type: 'ADD_TO_HISTORY'; shapes: Shape[] }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 
-  const addToHistory = useCallback((shapes: Shape[]) => {
-    setHistory((prev) => {
+const undoReducer = (state: UndoState, action: UndoAction): UndoState => {
+  switch (action.type) {
+    case 'ADD_TO_HISTORY': {
       // Remove any future history if we're not at the end
-      const newHistory = prev.slice(0, currentIndex + 1);
+      const newHistory = state.history.slice(0, state.currentIndex + 1);
       
       // Add new state
       newHistory.push({
-        shapes: JSON.parse(JSON.stringify(shapes)), // Deep clone
+        shapes: JSON.parse(JSON.stringify(action.shapes)), // Deep clone
         timestamp: Date.now()
       });
 
       // Limit history size
+      let newIndex = newHistory.length - 1;
       if (newHistory.length > MAX_HISTORY) {
         newHistory.shift();
-        setCurrentIndex(prev => prev);
-        return newHistory;
+        newIndex = MAX_HISTORY - 1;
       }
 
-      setCurrentIndex(newHistory.length - 1);
-      return newHistory;
-    });
-  }, [currentIndex]);
+      return {
+        history: newHistory,
+        currentIndex: newIndex
+      };
+    }
+    
+    case 'UNDO': {
+      if (state.currentIndex > 0) {
+        return {
+          ...state,
+          currentIndex: state.currentIndex - 1
+        };
+      }
+      return state;
+    }
+    
+    case 'REDO': {
+      if (state.currentIndex < state.history.length - 1) {
+        return {
+          ...state,
+          currentIndex: state.currentIndex + 1
+        };
+      }
+      return state;
+    }
+    
+    default:
+      return state;
+  }
+};
+
+export const useUndo = (initialShapes: Shape[]) => {
+  const [state, dispatch] = useReducer(undoReducer, {
+    history: [{
+      shapes: initialShapes,
+      timestamp: Date.now()
+    }],
+    currentIndex: 0
+  });
+
+  const isRestoringRef = useRef(false); // Flag to prevent history updates during undo/redo
+  const lastShapesRef = useRef<string>(JSON.stringify(initialShapes)); // Track last added shapes
+
+  const addToHistory = useCallback((shapes: Shape[]) => {
+    // Skip if currently restoring from undo/redo
+    if (isRestoringRef.current) {
+      return;
+    }
+    
+    const shapesJson = JSON.stringify(shapes);
+    
+    // Don't add if it's the same as what we last added
+    if (shapesJson === lastShapesRef.current) {
+      return;
+    }
+    
+    lastShapesRef.current = shapesJson;
+    dispatch({ type: 'ADD_TO_HISTORY', shapes });
+  }, []);
 
   const undo = useCallback(() => {
-    if (currentIndex > 0) {
+    if (state.currentIndex > 0) {
+      // Check if going back would result in an empty canvas when current canvas has content
+      const currentShapes = state.history[state.currentIndex].shapes;
+      const previousShapes = state.history[state.currentIndex - 1].shapes;
+      
+      // Don't allow undo if it would go back to empty state after page load
+      if (previousShapes.length === 0 && currentShapes.length > 0 && state.currentIndex === 1) {
+        return null;
+      }
+      
       isRestoringRef.current = true; // Set flag to prevent history update
-      setCurrentIndex(currentIndex - 1);
-      return history[currentIndex - 1].shapes;
+      dispatch({ type: 'UNDO' });
+      lastShapesRef.current = JSON.stringify(previousShapes); // Update ref to prevent re-adding
+      return previousShapes;
     }
     return null;
-  }, [currentIndex, history]);
+  }, [state.currentIndex, state.history]);
 
   const redo = useCallback(() => {
-    if (currentIndex < history.length - 1) {
+    if (state.currentIndex < state.history.length - 1) {
       isRestoringRef.current = true; // Set flag to prevent history update
-      setCurrentIndex(currentIndex + 1);
-      return history[currentIndex + 1].shapes;
+      dispatch({ type: 'REDO' });
+      const shapes = state.history[state.currentIndex + 1].shapes;
+      lastShapesRef.current = JSON.stringify(shapes); // Update ref to prevent re-adding
+      return shapes;
     }
     return null;
-  }, [currentIndex, history]);
+  }, [state.currentIndex, state.history]);
 
-  const canUndo = currentIndex > 0;
-  const canRedo = currentIndex < history.length - 1;
+  const finishRestoring = useCallback(() => {
+    isRestoringRef.current = false;
+  }, []);
+
+  // Can undo if we're not at the beginning AND it wouldn't go back to empty state after initial load
+  const canUndo = (() => {
+    if (state.currentIndex === 0) return false;
+    
+    const currentShapes = state.history[state.currentIndex].shapes;
+    const previousShapes = state.history[state.currentIndex - 1].shapes;
+    
+    // Don't allow undo if it would go back to empty state from non-empty state at index 1
+    // (This prevents undoing past initial page load)
+    if (previousShapes.length === 0 && currentShapes.length > 0 && state.currentIndex === 1) {
+      return false;
+    }
+    
+    return true;
+  })();
+  
+  const canRedo = state.currentIndex < state.history.length - 1;
 
   return {
     undo,
     redo,
     canUndo,
     canRedo,
-    addToHistory
+    addToHistory,
+    finishRestoring
   };
 };
-

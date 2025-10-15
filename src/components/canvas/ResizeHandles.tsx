@@ -5,7 +5,7 @@ import { Shape } from '../../types';
 
 interface ResizeHandlesProps {
   shape: Shape;
-  onUpdate: (shape: Shape) => void;
+  onUpdate: (shape: Shape, immediate?: boolean) => void;
 }
 
 type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
@@ -27,11 +27,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
     bottomRight: { x: shape.x + width, y: shape.y + height },
   };
 
-  const handleCornerDragMove = useCallback((corner: Corner, e: Konva.KonvaEventObject<DragEvent>) => {
-    const node = e.target;
-    const newX = node.x();
-    const newY = node.y();
-
+  const calculateNewDimensions = useCallback((corner: Corner, newX: number, newY: number) => {
     let newShapeX = shape.x;
     let newShapeY = shape.y;
     let newWidth = width;
@@ -40,26 +36,22 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
     // Calculate new dimensions based on which corner is being dragged
     switch (corner) {
       case 'topLeft':
-        // Dragging top-left: origin moves, bottom-right stays fixed
         newShapeX = newX;
         newShapeY = newY;
         newWidth = (shape.x + width) - newX;
         newHeight = (shape.y + height) - newY;
         break;
       case 'topRight':
-        // Dragging top-right: top-left corner stays fixed
         newShapeY = newY;
         newWidth = newX - shape.x;
         newHeight = (shape.y + height) - newY;
         break;
       case 'bottomLeft':
-        // Dragging bottom-left: top-right corner stays fixed
         newShapeX = newX;
         newWidth = (shape.x + width) - newX;
         newHeight = newY - shape.y;
         break;
       case 'bottomRight':
-        // Dragging bottom-right: top-left corner stays fixed
         newWidth = newX - shape.x;
         newHeight = newY - shape.y;
         break;
@@ -77,6 +69,17 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
       newShapeY = shape.y + height - 10;
     }
 
+    return { newShapeX, newShapeY, newWidth, newHeight };
+  }, [shape, width, height]);
+
+  const handleCornerDragMove = useCallback((corner: Corner, e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    const { newShapeX, newShapeY, newWidth, newHeight } = calculateNewDimensions(corner, newX, newY);
+
+    // Use throttled update during drag (immediate=false)
     onUpdate({
       ...shape,
       x: newShapeX,
@@ -84,16 +87,32 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
       width: newWidth,
       height: newHeight,
       updatedAt: Date.now(),
-    });
-  }, [shape, width, height, onUpdate]);
+    }, false);
+  }, [shape, calculateNewDimensions, onUpdate]);
 
   const handleCornerDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
   }, []);
 
-  const handleCornerDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+  const handleCornerDragEnd = useCallback((corner: Corner, e: Konva.KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
-  }, []);
+    
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    const { newShapeX, newShapeY, newWidth, newHeight } = calculateNewDimensions(corner, newX, newY);
+
+    // Use immediate update on drag end for undo/redo
+    onUpdate({
+      ...shape,
+      x: newShapeX,
+      y: newShapeY,
+      width: newWidth,
+      height: newHeight,
+      updatedAt: Date.now(),
+    }, true);
+  }, [shape, calculateNewDimensions, onUpdate]);
 
   return (
     <Group>
@@ -108,7 +127,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
         draggable={true}
         onDragStart={handleCornerDragStart}
         onDragMove={(e) => handleCornerDragMove('topLeft', e)}
-        onDragEnd={handleCornerDragEnd}
+        onDragEnd={(e) => handleCornerDragEnd('topLeft', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -137,7 +156,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
         draggable={true}
         onDragStart={handleCornerDragStart}
         onDragMove={(e) => handleCornerDragMove('topRight', e)}
-        onDragEnd={handleCornerDragEnd}
+        onDragEnd={(e) => handleCornerDragEnd('topRight', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -166,7 +185,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
         draggable={true}
         onDragStart={handleCornerDragStart}
         onDragMove={(e) => handleCornerDragMove('bottomLeft', e)}
-        onDragEnd={handleCornerDragEnd}
+        onDragEnd={(e) => handleCornerDragEnd('bottomLeft', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"
@@ -195,7 +214,7 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate })
         draggable={true}
         onDragStart={handleCornerDragStart}
         onDragMove={(e) => handleCornerDragMove('bottomRight', e)}
-        onDragEnd={handleCornerDragEnd}
+        onDragEnd={(e) => handleCornerDragEnd('bottomRight', e)}
         hitStrokeWidth={10}
         shadowBlur={5}
         shadowColor="rgba(0,0,0,0.3)"

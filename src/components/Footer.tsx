@@ -164,8 +164,8 @@ export const Footer: React.FC = React.memo(() => {
                 <h3 className="font-semibold text-lg text-gray-800 mb-3 border-b pb-2">👥 Collaboration Features</h3>
                 <ul className="space-y-3 text-sm text-gray-600">
                   <li className="pl-4">
-                    <div className="font-semibold text-gray-700 mb-1">👁️ Real-Time Cursors</div>
-                    <div>See where other users are pointing in real-time. Each user has a unique colored cursor with their name displayed. Perfect for pair programming or design reviews.</div>
+                    <div className="font-semibold text-gray-700 mb-1">👁️ Real-Time Cursors & Selection Awareness</div>
+                    <div>See where other users are pointing in real-time. Each user has a unique colored cursor with their name displayed. When someone selects an object, it glows in their color so you know what they're working on. Perfect for pair programming or design reviews.</div>
                   </li>
                   <li className="pl-4">
                     <div className="font-semibold text-gray-700 mb-1">🔄 Automatic Sync</div>

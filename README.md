@@ -79,16 +79,19 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - **"Last Write Wins" Strategy**: Timestamp-based conflict resolution for concurrent edits
   - **Optimistic Updates**: Immediate local feedback with throttled Firestore writes
   - **Smart Merging**: Local updates compared with remote timestamps, most recent always wins
+  - **Selection Awareness**: See glowing outline in other users' colors when they select objects
   - Delta updates for optimal network performance
   - State reconciliation for data consistency
   - Persistent state across all sessions
 
-- **Multiplayer Cursors**
+- **Multiplayer Cursors & Selection Awareness**
   - Live cursor tracking (<30ms latency)
   - User names displayed next to cursors
   - Pastel color-coded per user
+  - **Selection Glow**: Objects selected by others show colored glow (user's color)
+  - Real-time selection broadcasting (<100ms latency)
   - Smooth cursor movement with 75ms throttling
-  - Automatic stale cursor cleanup
+  - Automatic stale cursor and selection cleanup
 
 - **Presence Awareness**
   - Real-time list of online users with pastel color-coded indicators

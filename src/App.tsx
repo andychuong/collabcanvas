@@ -8,12 +8,13 @@ import { useShapes } from './hooks/useShapes';
 import { useCursors } from './hooks/useCursors';
 import { usePresence } from './hooks/usePresence';
 import { useUndo } from './hooks/useUndo';
+import { useSelections } from './hooks/useSelections';
 import { Auth } from './components/Auth';
 import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
 import { Footer } from './components/Footer';
 import { Shape, ShapeType, ViewportState } from './types';
-import { getUserColor, getRandomColor } from './utils/colors';
+import { getUserColor } from './utils/colors';
 
 /**
  * COLLABORATIVE EDITING & CONFLICT RESOLUTION STRATEGY:
@@ -119,7 +120,7 @@ function App() {
   const [rectangleInProgress, setRectangleInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   
   // Undo/Redo functionality
-  const { undo, redo, canUndo, canRedo } = useUndo(shapes);
+  const { undo, redo, canUndo, canRedo, addToHistory, finishRestoring } = useUndo(shapes);
 
   // Fetch user data
   useEffect(() => {
@@ -151,6 +152,35 @@ function App() {
     user?.email || undefined,
     userColor
   );
+
+  // Track selections from other users
+  const [otherUsersSelections, setOtherUsersSelections] = useState<Map<string, { shapeIds: string[]; color: string; userName: string }>>(new Map());
+  const { subscribeToSelections } = useSelections(
+    user?.uid || null,
+    userName,
+    userColor,
+    selectedShapeIds
+  );
+
+  // Subscribe to other users' selections
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = subscribeToSelections((selectionsMap) => {
+      // Convert to a simpler format for rendering
+      const simplified = new Map<string, { shapeIds: string[]; color: string; userName: string }>();
+      selectionsMap.forEach((selection) => {
+        simplified.set(selection.userId, {
+          shapeIds: selection.shapeIds,
+          color: selection.userColor,
+          userName: selection.userName,
+        });
+      });
+      setOtherUsersSelections(simplified);
+    });
+
+    return unsubscribe;
+  }, [user, subscribeToSelections]);
 
   const handleAddShape = useCallback((type: ShapeType) => {
     if (!user) return;
@@ -228,6 +258,11 @@ function App() {
         setShapeToPlace(null); // Exit placement mode
         setSelectedShapeId(lineInProgress.shapeId);
         setSelectedShapeIds([lineInProgress.shapeId]);
+        
+        // Add to history after line is finalized
+        setTimeout(() => {
+          addToHistory(shapes);
+        }, 100);
         return;
       }
     }
@@ -261,6 +296,11 @@ function App() {
         setShapeToPlace(null);
         setSelectedShapeId(rectangleInProgress.shapeId);
         setSelectedShapeIds([rectangleInProgress.shapeId]);
+        
+        // Add to history after rectangle is finalized
+        setTimeout(() => {
+          addToHistory(shapes);
+        }, 100);
         return;
       }
     }
@@ -290,11 +330,16 @@ function App() {
     setSelectedShapeId(shape.id);
     setSelectedShapeIds([shape.id]);
     setShapeToPlace(null); // Exit placement mode
-  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress]);
+    
+    // Add to history after shape is created
+    setTimeout(() => {
+      addToHistory([...shapes, shape]);
+    }, 100);
+  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress, shapes, addToHistory]);
 
   // Use optimistic local updates with throttled Firestore writes
   const handleShapeUpdate = useCallback((shape: Shape, immediate = false) => {
-    // Always update local state immediately for smooth visuals
+    // Always update local state immediately for visual feedback
     setLocalShapeUpdates(prev => {
       const next = new Map(prev);
       next.set(shape.id, shape);
@@ -303,17 +348,23 @@ function App() {
     
     // Write to Firestore (throttled or immediate)
     if (immediate) {
+      // For immediate updates (drag end, resize end), update Firestore immediately
       updateShape(shape);
-      // Clear local update after immediate write
-      setLocalShapeUpdates(prev => {
-        const next = new Map(prev);
-        next.delete(shape.id);
-        return next;
-      });
+      
+      // Build the updated shapes array for history
+      // This ensures we capture the exact state after this update
+      const updatedShapes = shapes.map(s => s.id === shape.id ? shape : s);
+      
+      // Add to history with the correct state
+      // Use setTimeout to ensure React finishes any pending state updates
+      setTimeout(() => {
+        addToHistory(updatedShapes);
+      }, 100);
     } else {
+      // For throttled updates (during drag), use throttled Firestore writes
       throttledUpdateShape(shape);
     }
-  }, [updateShape, throttledUpdateShape]);
+  }, [updateShape, throttledUpdateShape, addToHistory, shapes]);
 
   const handleDeleteSelected = useCallback(() => {
     // Delete all selected shapes
@@ -321,13 +372,25 @@ function App() {
       selectedShapeIds.forEach(id => deleteShape(id));
       setSelectedShapeId(null);
       setSelectedShapeIds([]);
+      
+      // Add to history after delete
+      setTimeout(() => {
+        const remainingShapes = shapes.filter(s => !selectedShapeIds.includes(s.id));
+        addToHistory(remainingShapes);
+      }, 100);
     } else if (selectedShapeId) {
       // Fallback to single selection
       deleteShape(selectedShapeId);
       setSelectedShapeId(null);
       setSelectedShapeIds([]);
+      
+      // Add to history after delete
+      setTimeout(() => {
+        const remainingShapes = shapes.filter(s => s.id !== selectedShapeId);
+        addToHistory(remainingShapes);
+      }, 100);
     }
-  }, [selectedShapeId, selectedShapeIds, deleteShape]);
+  }, [selectedShapeId, selectedShapeIds, deleteShape, shapes, addToHistory]);
 
   const handleDuplicate = useCallback(() => {
     if (!user) return;
@@ -354,6 +417,11 @@ function App() {
       if (newShapeIds.length > 0) {
         setSelectedShapeId(newShapeIds[0]);
         setSelectedShapeIds(newShapeIds);
+        
+        // Add to history after duplicate
+        setTimeout(() => {
+          addToHistory(shapes);
+        }, 100);
       }
     } else if (selectedShapeId) {
       // Fallback to single selection
@@ -371,9 +439,14 @@ function App() {
         addShape(newShape);
         setSelectedShapeId(newShape.id);
         setSelectedShapeIds([newShape.id]);
+        
+        // Add to history after duplicate
+        setTimeout(() => {
+          addToHistory(shapes);
+        }, 100);
       }
     }
-  }, [selectedShapeId, selectedShapeIds, shapes, user, addShape]);
+  }, [selectedShapeId, selectedShapeIds, shapes, user, addShape, addToHistory]);
 
   const handleColorChange = useCallback((color: string) => {
     const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
@@ -395,8 +468,9 @@ function App() {
       updatedShape.fill = color;
     }
 
-    updateShape(updatedShape);
-  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
   const handleFillColorChange = useCallback((color: string) => {
     const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
@@ -414,8 +488,9 @@ function App() {
       updatedAt: Date.now(),
     };
 
-    updateShape(updatedShape);
-  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
   const handleFontSizeChange = useCallback((size: number) => {
     const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
@@ -433,8 +508,9 @@ function App() {
       updatedAt: Date.now(),
     };
 
-    updateShape(updatedShape);
-  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
   const handlePositionChange = useCallback((x: number, y: number) => {
     const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
@@ -450,8 +526,9 @@ function App() {
       updatedAt: Date.now(),
     };
 
-    updateShape(updatedShape);
-  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
   const handleUndo = useCallback(async () => {
     const previousShapes = undo();
@@ -475,8 +552,13 @@ function App() {
           addShape(shape);
         }
       }
+      
+      // Clear the restoring flag after a delay to allow Firestore to sync
+      setTimeout(() => {
+        finishRestoring();
+      }, 500);
     }
-  }, [undo, shapes, user, deleteShape, updateShape, addShape]);
+  }, [undo, shapes, user, deleteShape, updateShape, addShape, finishRestoring]);
 
   const handleRedo = useCallback(async () => {
     const nextShapes = redo();
@@ -500,8 +582,13 @@ function App() {
           addShape(shape);
         }
       }
+      
+      // Clear the restoring flag after a delay to allow Firestore to sync
+      setTimeout(() => {
+        finishRestoring();
+      }, 500);
     }
-  }, [redo, shapes, user, deleteShape, updateShape, addShape]);
+  }, [redo, shapes, user, deleteShape, updateShape, addShape, finishRestoring]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -736,6 +823,7 @@ function App() {
               onPlaceShape={handlePlaceShape}
               isSelectMode={isSelectMode}
               onExitSelectMode={handleExitSelectMode}
+              otherUsersSelections={otherUsersSelections}
             />
           </div>
         </div>

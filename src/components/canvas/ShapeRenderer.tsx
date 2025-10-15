@@ -18,6 +18,7 @@ interface ShapeRendererProps {
   onShapeDragEnd: (shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => void;
   onTextDblClick: (shape: Shape, e: Konva.KonvaEventObject<MouseEvent>) => void;
   onShapeUpdate: (shape: Shape) => void;
+  otherUsersSelections?: Map<string, { shapeIds: string[]; color: string; userName: string }>;
 }
 
 export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
@@ -31,11 +32,22 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
   onShapeDragEnd,
   onTextDblClick,
   onShapeUpdate,
+  otherUsersSelections = new Map(),
 }) => {
+  // Check if a shape is selected by another user
+  const getOtherUserSelection = (shapeId: string): { color: string; userName: string } | null => {
+    for (const [, selection] of otherUsersSelections) {
+      if (selection.shapeIds.includes(shapeId)) {
+        return { color: selection.color, userName: selection.userName };
+      }
+    }
+    return null;
+  };
   return (
     <Layer>
       {shapes.map((shape) => {
         const isSelected = shape.id === selectedShapeId || selectedShapeIds.includes(shape.id);
+        const otherUserSelection = getOtherUserSelection(shape.id);
 
         if (shape.type === 'rectangle') {
           const hasStroke = shape.stroke && shape.strokeWidth;
@@ -57,8 +69,9 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
               stroke={hasStroke ? shape.stroke : darkerBorderColor}
               strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
-              shadowBlur={isSelected ? 10 : 0}
-              shadowColor={darkerBorderColor}
+              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
+              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
+              shadowOpacity={otherUserSelection ? 0.8 : undefined}
             />
           );
         }
@@ -81,8 +94,9 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
               stroke={hasStroke ? shape.stroke : darkerBorderColor}
               strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
-              shadowBlur={isSelected ? 10 : 0}
-              shadowColor={darkerBorderColor}
+              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
+              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
+              shadowOpacity={otherUserSelection ? 0.8 : undefined}
             />
           );
         }
@@ -110,8 +124,9 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              shadowBlur={isSelected ? 10 : 0}
-              shadowColor={darkerBorderColor}
+              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
+              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
+              shadowOpacity={otherUserSelection ? 0.8 : undefined}
             />
           );
         }
@@ -133,8 +148,9 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              shadowBlur={isSelected ? 10 : 0}
-              shadowColor={darkerShadowColor}
+              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
+              shadowColor={isSelected ? darkerShadowColor : (otherUserSelection ? otherUserSelection.color : undefined)}
+              shadowOpacity={otherUserSelection ? 0.8 : undefined}
               hitStrokeWidth={isSelected ? 15 : 10}
             />
           );
