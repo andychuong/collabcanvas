@@ -74,7 +74,10 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   const additionalUsersCount = Math.max(0, onlineUsers.length - maxVisibleUsers);
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-10">
+    <div className="fixed top-0 left-0 right-0 bg-white shadow-sm z-10" style={{
+      borderBottom: '2px solid #9ca3af',
+      background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 80%, #e5e7eb 100%)'
+    }}>
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold text-gray-800 mr-4">CollabCanvas</h1>
@@ -154,9 +157,9 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
               <button
                 onClick={onUndo}
                 disabled={!canUndo}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center w-10 h-10 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Undo2 className="w-4 h-4" />
+                <Undo2 className="w-5 h-5" />
               </button>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
                 Undo (Ctrl+Z)
@@ -167,9 +170,9 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
               <button
                 onClick={onRedo}
                 disabled={!canRedo}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center w-10 h-10 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Redo2 className="w-4 h-4" />
+                <Redo2 className="w-5 h-5" />
               </button>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
                 Redo (Ctrl+Y)
@@ -202,9 +205,9 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                 <div className="relative group">
                   <button
                     onClick={onDuplicate}
-                    className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="flex items-center justify-center w-10 h-10 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   >
-                    <Copy className="w-4 h-4" />
+                    <Copy className="w-5 h-5" />
                   </button>
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
                     Duplicate (Ctrl+D)
@@ -214,9 +217,9 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                 <div className="relative group">
                   <button
                     onClick={onDeleteSelected}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    className="flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5" />
                   </button>
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
                     Delete (Del)

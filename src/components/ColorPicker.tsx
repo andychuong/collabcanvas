@@ -26,16 +26,16 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, outli
       <div className="relative group">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          className="flex items-center justify-center w-10 h-10 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors relative"
         >
           <div
-            className="w-5 h-5 rounded border-2"
+            className="w-6 h-6 rounded border-2"
             style={outline 
               ? { backgroundColor: 'white', borderColor: color }
               : { backgroundColor: color, borderColor: '#d1d5db' }
             }
           />
-          <Palette className="w-4 h-4" />
+          <Palette className="w-3 h-3 absolute bottom-0 right-0 bg-gray-100 rounded-full" style={{ padding: '1px' }} />
         </button>
         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
           {tooltipText}

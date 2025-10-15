@@ -10,6 +10,7 @@ import { TextEditor } from './canvas/TextEditor';
 import { useCanvasViewport } from '../hooks/useCanvasViewport';
 import { useCanvasInteraction } from '../hooks/useCanvasInteraction';
 import { useTextEditing } from '../hooks/useTextEditing';
+import { clampViewportPosition } from '../utils/canvasHelpers';
 
 interface CanvasProps {
   shapes: Shape[];
@@ -184,15 +185,21 @@ export const Canvas: React.FC<CanvasProps> = ({
       const dx = pos.x - panStart.x;
       const dy = pos.y - panStart.y;
       
+      const newX = viewport.x + dx;
+      const newY = viewport.y + dy;
+      
+      // Clamp to grid boundaries
+      const clampedPos = clampViewportPosition(newX, newY, viewport.scale, stageSize.width, stageSize.height);
+      
       onViewportChange({
         ...viewport,
-        x: viewport.x + dx,
-        y: viewport.y + dy,
+        x: clampedPos.x,
+        y: clampedPos.y,
       });
       
       setPanStart({ x: pos.x, y: pos.y });
     }
-  }, [isPanning, panStart, viewport, onViewportChange]);
+  }, [isPanning, panStart, viewport, onViewportChange, stageSize]);
 
   // Handle mouse move for selection box
   const handleStageMouseMoveSelection = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
