@@ -95,7 +95,7 @@ export const usePresence = (
         });
       } catch (error) {
         // Silently fail - this might happen during logout
-        console.log('Could not set offline status');
+        console.error('Could not set offline status:', error);
       }
     };
 

@@ -63,9 +63,6 @@ function App() {
         return localUpdate; // Local is newer, use it (pending sync)
       } else {
         // Firestore is newer or equal - another user's change wins
-        if (localUpdate.updatedAt < shape.updatedAt) {
-          console.log(`Conflict resolved for shape ${shape.id}: Remote change (${new Date(shape.updatedAt).toLocaleTimeString()}) overwrites local change (${new Date(localUpdate.updatedAt).toLocaleTimeString()})`);
-        }
         return shape; // Firestore is newer or equal, use it (last write wins)
       }
     }
