@@ -10,7 +10,8 @@ interface ShapeRendererProps {
   selectedShapeIds: string[];
   editingTextId: string | null;
   onShapeClick: (shapeId: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
-  onShapeDragStart: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onShapeDragStart: (shapeId: string, e: Konva.KonvaEventObject<DragEvent>) => void;
+  onShapeDragMove: (shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => void;
   onShapeDragEnd: (shape: Shape, e: Konva.KonvaEventObject<DragEvent>) => void;
   onTextDblClick: (shape: Shape, e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
@@ -22,6 +23,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
   editingTextId,
   onShapeClick,
   onShapeDragStart,
+  onShapeDragMove,
   onShapeDragEnd,
   onTextDblClick,
 }) => {
@@ -35,6 +37,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
           return (
             <Rect
               key={shape.id}
+              id={shape.id}
               x={shape.x}
               y={shape.y}
               width={shape.width || 100}
@@ -43,10 +46,11 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               rotation={shape.rotation || 0}
               draggable={true}
               onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={onShapeDragStart}
+              onDragStart={(e) => onShapeDragStart(shape.id, e)}
+              onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
               stroke={darkerBorderColor}
-              strokeWidth={isSelected ? 3 : 0}
+              strokeWidth={isSelected ? 1.5 : 0}
               shadowBlur={isSelected ? 10 : 0}
               shadowColor={darkerBorderColor}
             />
@@ -58,16 +62,18 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
           return (
             <Circle
               key={shape.id}
+              id={shape.id}
               x={shape.x}
               y={shape.y}
               radius={shape.radius || 50}
               fill={shape.fill}
               draggable={true}
               onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={onShapeDragStart}
+              onDragStart={(e) => onShapeDragStart(shape.id, e)}
+              onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
               stroke={darkerBorderColor}
-              strokeWidth={isSelected ? 3 : 0}
+              strokeWidth={isSelected ? 1.5 : 0}
               shadowBlur={isSelected ? 10 : 0}
               shadowColor={darkerBorderColor}
             />
@@ -76,6 +82,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
 
         if (shape.type === 'text') {
           const darkerBorderColor = isSelected && shape.fill ? darkenColor(shape.fill, 0.4) : undefined;
+          const isEditing = editingTextId === shape.id;
+          
           return (
             <KonvaText
               key={shape.id}
@@ -85,14 +93,18 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               text={shape.text || 'Text'}
               fontSize={shape.fontSize || 24}
               fill={shape.fill}
-              draggable={true}
-              visible={editingTextId !== shape.id}
-              onClick={(e) => onShapeClick(shape.id, e)}
-              onDblClick={(e) => onTextDblClick(shape, e)}
-              onDragStart={onShapeDragStart}
+              draggable={!isEditing}
+              visible={!isEditing}
+              onClick={(e) => !isEditing && onShapeClick(shape.id, e)}
+              onDblClick={(e) => {
+                e.cancelBubble = true;
+                onTextDblClick(shape, e);
+              }}
+              onDragStart={(e) => onShapeDragStart(shape.id, e)}
+              onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={darkerBorderColor}
-              strokeWidth={isSelected ? 1.5 : 0}
+              shadowBlur={isSelected ? 10 : 0}
+              shadowColor={darkerBorderColor}
             />
           );
         }
@@ -103,6 +115,7 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
           return (
             <Line
               key={shape.id}
+              id={shape.id}
               x={shape.x}
               y={shape.y}
               points={shape.points || [0, 0, 100, 100]}
@@ -110,7 +123,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = ({
               strokeWidth={isSelected ? (shape.strokeWidth || 2) + 1 : (shape.strokeWidth || 2)}
               draggable={true}
               onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={onShapeDragStart}
+              onDragStart={(e) => onShapeDragStart(shape.id, e)}
+              onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
               shadowBlur={isSelected ? 10 : 0}
               shadowColor={darkerShadowColor}

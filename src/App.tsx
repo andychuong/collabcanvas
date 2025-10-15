@@ -11,7 +11,6 @@ import { useUndo } from './hooks/useUndo';
 import { Auth } from './components/Auth';
 import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
-import { UsersList } from './components/UsersList';
 import { Shape, ShapeType, ViewportState } from './types';
 import { getUserColor, getRandomColor } from './utils/colors';
 
@@ -24,6 +23,8 @@ function App() {
   const [userName, setUserName] = useState('');
   const [userColor, setUserColor] = useState('');
   const [showMinimap, setShowMinimap] = useState(false);
+  const [shapeToPlace, setShapeToPlace] = useState<ShapeType | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
   
   // Undo/Redo functionality
   const { undo, redo, canUndo, canRedo } = useUndo(shapes);
@@ -61,27 +62,49 @@ function App() {
 
   const handleAddShape = useCallback((type: ShapeType) => {
     if (!user) return;
+    // Enter placement mode instead of creating shape immediately
+    setShapeToPlace(type);
+    setSelectedShapeId(null);
+    setSelectedShapeIds([]);
+    // Exit select mode when adding a shape
+    setIsSelectMode(false);
+  }, [user]);
+
+  const handleToggleSelectMode = useCallback(() => {
+    setIsSelectMode(prev => !prev);
+    // Cancel placement mode when entering select mode
+    if (!isSelectMode) {
+      setShapeToPlace(null);
+    }
+  }, [isSelectMode]);
+
+  const handleExitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+  }, []);
+
+  const handlePlaceShape = useCallback((x: number, y: number) => {
+    if (!user || !shapeToPlace) return;
 
     const shape: Shape = {
       id: uuidv4(),
-      type,
-      x: -viewport.x / viewport.scale + 200,
-      y: -viewport.y / viewport.scale + 200,
-      fill: getRandomColor(),
+      type: shapeToPlace,
+      x,
+      y,
+      fill: shapeToPlace === 'text' ? '#000000' : getRandomColor(),
       createdBy: user.uid,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
-    if (type === 'rectangle') {
+    if (shapeToPlace === 'rectangle') {
       shape.width = 150;
       shape.height = 100;
-    } else if (type === 'circle') {
+    } else if (shapeToPlace === 'circle') {
       shape.radius = 60;
-    } else if (type === 'text') {
+    } else if (shapeToPlace === 'text') {
       shape.text = 'Double click to edit';
       shape.fontSize = 24;
-    } else if (type === 'line') {
+    } else if (shapeToPlace === 'line') {
       shape.points = [0, 0, 100, 0];
       shape.stroke = getRandomColor();
       shape.strokeWidth = 2;
@@ -90,7 +113,8 @@ function App() {
     addShape(shape);
     setSelectedShapeId(shape.id);
     setSelectedShapeIds([shape.id]);
-  }, [user, viewport, addShape]);
+    setShapeToPlace(null); // Exit placement mode
+  }, [user, shapeToPlace, addShape]);
 
   const handleShapeUpdate = useCallback((shape: Shape) => {
     updateShape(shape);
@@ -155,6 +179,28 @@ function App() {
       }
     }
   }, [selectedShapeId, selectedShapeIds, shapes, user, addShape]);
+
+  const handleColorChange = useCallback((color: string) => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      updatedAt: Date.now(),
+    };
+
+    // For lines, update stroke; for other shapes, update fill
+    if (shape.type === 'line') {
+      updatedShape.stroke = color;
+    } else {
+      updatedShape.fill = color;
+    }
+
+    updateShape(updatedShape);
+  }, [selectedShapeId, selectedShapeIds, shapes, updateShape]);
 
   const handleUndo = useCallback(async () => {
     const previousShapes = undo();
@@ -235,6 +281,36 @@ function App() {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're editing text (don't trigger shortcuts in text fields)
+      const isEditingText = (e.target as HTMLElement)?.tagName === 'TEXTAREA' || 
+                           (e.target as HTMLElement)?.tagName === 'INPUT';
+
+      // Spacebar - reset viewport to original view (only when not editing text)
+      if (e.key === ' ' && !isEditingText) {
+        e.preventDefault();
+        setViewport({ x: 0, y: 0, scale: 1 });
+        return;
+      }
+
+      // Escape key - cancel placement mode or deselect
+      if (e.key === 'Escape') {
+        if (shapeToPlace) {
+          setShapeToPlace(null);
+        } else {
+          setSelectedShapeId(null);
+          setSelectedShapeIds([]);
+        }
+        return;
+      }
+
+      // V key - toggle select mode (only when not editing text)
+      if (e.key === 'v' && !isEditingText) {
+        e.preventDefault();
+        setIsSelectMode(prev => !prev);
+        setShapeToPlace(null); // Cancel placement mode
+        return;
+      }
+
       // Undo with Ctrl+Z (or Cmd+Z on Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -247,22 +323,16 @@ function App() {
         handleRedo();
       }
 
-      // Delete selected shape(s) with Delete or Backspace
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedShapeId || selectedShapeIds.length > 0)) {
+      // Delete selected shape(s) with Delete or Backspace (only when not editing text)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedShapeId || selectedShapeIds.length > 0) && !isEditingText) {
         e.preventDefault();
         handleDeleteSelected();
-      }
-
-      // Deselect with Escape
-      if (e.key === 'Escape') {
-        setSelectedShapeId(null);
-        setSelectedShapeIds([]);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, selectedShapeIds, handleDeleteSelected, handleUndo, handleRedo]);
+  }, [selectedShapeId, selectedShapeIds, shapeToPlace, handleDeleteSelected, handleUndo, handleRedo, setIsSelectMode]);
 
   if (authLoading) {
     return (
@@ -302,34 +372,17 @@ function App() {
         canRedo={canRedo}
         onLogout={handleLogout}
         selectedShapeIds={selectedShapeIds}
-        currentUser={userName}
+        currentUserId={user.uid}
+        onlineUsers={onlineUsers}
+        shapes={shapes}
+        onColorChange={handleColorChange}
+        isSelectMode={isSelectMode}
+        onToggleSelectMode={handleToggleSelectMode}
       />
       
       {/* Centered content container */}
       <div className="flex items-center justify-center h-full pt-[60px]">
         <div className="flex items-start gap-4 max-w-[2000px] w-full justify-center px-4">
-          {/* Left sidebar with online users and controls */}
-          <div className="space-y-4 flex-shrink-0">
-            <UsersList users={onlineUsers} currentUserId={user.uid} />
-            
-            {/* Controls panel */}
-            <div className="bg-white border-4 border-gray-300 rounded-lg shadow-2xl p-4 w-64">
-              <h3 className="font-semibold text-gray-800 mb-2">Controls</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>🖱️ <strong>Drag canvas</strong></li>
-                <li>🔍 <strong>Zoom:</strong> Mouse wheel</li>
-                <li>✋ <strong>Move:</strong> Drag shapes</li>
-                <li>🎯 <strong>Select:</strong> Click shape</li>
-                <li>📦 <strong>Multi-select:</strong> Ctrl/Cmd + Click</li>
-                <li>✏️ <strong>Edit text:</strong> Double-click text</li>
-                <li>🗑️ <strong>Delete:</strong> Select + Delete key</li>
-                <li>↶ <strong>Undo:</strong> Ctrl/Cmd + Z</li>
-                <li>↷ <strong>Redo:</strong> Ctrl/Cmd + Y</li>
-                <li>⎋ <strong>Deselect:</strong> Escape key</li>
-              </ul>
-            </div>
-          </div>
-          
           {/* Canvas container */}
           <div className="flex-shrink-0">
             <Canvas
@@ -345,7 +398,33 @@ function App() {
               onViewportChange={handleViewportChange}
               onViewportInteraction={handleViewportInteraction}
               showMinimap={showMinimap}
+              shapeToPlace={shapeToPlace}
+              onPlaceShape={handlePlaceShape}
+              isSelectMode={isSelectMode}
+              onExitSelectMode={handleExitSelectMode}
             />
+          </div>
+          
+          {/* Right sidebar with controls */}
+          <div className="space-y-4 flex-shrink-0">
+            <div className="bg-white border-4 border-gray-300 rounded-lg shadow-2xl p-4 w-64">
+              <h3 className="font-semibold text-gray-800 mb-2">Controls</h3>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>➕ <strong>Add shape:</strong> Click button, then canvas</li>
+                <li>🖱️ <strong>Pan canvas:</strong> Left-click drag or middle mouse</li>
+                <li>🔍 <strong>Zoom:</strong> Mouse wheel</li>
+                <li>🏠 <strong>Reset view:</strong> Spacebar</li>
+                <li>✋ <strong>Move:</strong> Drag shapes</li>
+                <li>🎯 <strong>Select:</strong> Click shape</li>
+                <li>🔘 <strong>Select mode:</strong> V key or button (auto-exits after use)</li>
+                <li>📦 <strong>Multi-select:</strong> Select mode + drag box or Ctrl/Cmd + Click</li>
+                <li>✏️ <strong>Edit text:</strong> Double-click text</li>
+                <li>🗑️ <strong>Delete:</strong> Select + Delete key</li>
+                <li>↶ <strong>Undo:</strong> Ctrl/Cmd + Z</li>
+                <li>↷ <strong>Redo:</strong> Ctrl/Cmd + Y</li>
+                <li>⎋ <strong>Cancel/Deselect:</strong> Escape key</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

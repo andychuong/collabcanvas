@@ -31,10 +31,18 @@ export const useTextEditing = ({
     // Get the stage container position
     const stageBox = stage.container().getBoundingClientRect();
     
+    // Get the scale to account for font size in viewport
+    const scale = stage.scaleX();
+    const fontSize = shape.fontSize || 24;
+    
+    // Small upward adjustment to align textarea with Konva text
+    // Konva renders text slightly higher due to baseline differences
+    const verticalAdjustment = fontSize * scale * 0.15;
+    
     // Calculate the absolute screen position of the text
     // absolutePosition already accounts for all transformations (scale, position)
     const screenX = stageBox.left + absolutePosition.x;
-    const screenY = stageBox.top + absolutePosition.y;
+    const screenY = stageBox.top + absolutePosition.y - verticalAdjustment;
     
     setEditingTextId(shape.id);
     setTextareaValue(shape.text || '');

@@ -46,8 +46,7 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - Duplicate selected shapes
   - In-place text editing with double-click
   - Color-coded shapes with random colors
-  - Lines with customizable stroke width and color
-  - Graph paper grid background for precision
+  - Grid background for precision
 
 - **Real-Time Synchronization**
   - Instant sync across all connected users
