@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus } from 'lucide-react';
+import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw } from 'lucide-react';
 import { ShapeType, User as UserType, Shape } from '../types';
 import { ColorPicker } from './ColorPicker';
 
@@ -19,7 +19,13 @@ interface ToolbarProps {
   onColorChange?: (color: string) => void;
   onFillColorChange?: (color: string) => void;
   onFontSizeChange?: (size: number) => void;
+  onFontFamilyChange?: (fontFamily: string) => void;
+  onFontWeightChange?: (fontWeight: 'normal' | 'bold') => void;
+  onFontStyleChange?: (fontStyle: 'normal' | 'italic') => void;
+  onTextDecorationChange?: (textDecoration: 'none' | 'underline') => void;
   onPositionChange?: (x: number, y: number) => void;
+  onRotateLeft?: () => void;
+  onRotateRight?: () => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
 }
@@ -56,7 +62,13 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onColorChange,
   onFillColorChange,
   onFontSizeChange,
+  onFontFamilyChange,
+  onFontWeightChange,
+  onFontStyleChange,
+  onTextDecorationChange,
   onPositionChange,
+  onRotateLeft,
+  onRotateRight,
   isSelectMode,
   onToggleSelectMode,
 }) => {
@@ -258,6 +270,79 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                   </div>
                 )}
 
+                {/* Font Family Dropdown (only for text) */}
+                {selectedShapeIds.length === 1 && selectedShape?.type === 'text' && onFontFamilyChange && (
+                  <select
+                    value={selectedShape.fontFamily || 'Arial'}
+                    onChange={(e) => onFontFamilyChange(e.target.value)}
+                    className="h-10 px-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm border-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    title="Font family"
+                  >
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    <option value="Impact">Impact</option>
+                  </select>
+                )}
+
+                {/* Text Formatting Buttons (only for text) */}
+                {selectedShapeIds.length === 1 && selectedShape?.type === 'text' && (
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-1">
+                    {onFontWeightChange && (
+                      <button
+                        onClick={() => {
+                          const currentWeight = selectedShape.fontWeight || 'normal';
+                          onFontWeightChange(currentWeight === 'bold' ? 'normal' : 'bold');
+                        }}
+                        className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
+                          selectedShape.fontWeight === 'bold' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Bold"
+                      >
+                        <Bold className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onFontStyleChange && (
+                      <button
+                        onClick={() => {
+                          const currentStyle = selectedShape.fontStyle || 'normal';
+                          onFontStyleChange(currentStyle === 'italic' ? 'normal' : 'italic');
+                        }}
+                        className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
+                          selectedShape.fontStyle === 'italic' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Italic"
+                      >
+                        <Italic className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onTextDecorationChange && (
+                      <button
+                        onClick={() => {
+                          const currentDecoration = selectedShape.textDecoration || 'none';
+                          onTextDecorationChange(currentDecoration === 'underline' ? 'none' : 'underline');
+                        }}
+                        className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
+                          selectedShape.textDecoration === 'underline' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Underline"
+                      >
+                        <Underline className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Position Controls (X and Y) */}
                 {selectedShapeIds.length === 1 && selectedShape && onPositionChange && (
                   <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
@@ -291,6 +376,40 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                         title="Y position"
                       />
                     </div>
+                  </div>
+                )}
+
+                {/* Rotation Controls (only for rectangles) */}
+                {selectedShapeIds.length === 1 && selectedShape?.type === 'rectangle' && (
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-1">
+                    {onRotateLeft && (
+                      <div className="relative group">
+                        <button
+                          onClick={onRotateLeft}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Rotate Left 90°"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Rotate Left 90°
+                        </div>
+                      </div>
+                    )}
+                    {onRotateRight && (
+                      <div className="relative group">
+                        <button
+                          onClick={onRotateRight}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Rotate Right 90°"
+                        >
+                          <RotateCw className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Rotate Right 90°
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 

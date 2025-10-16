@@ -10,6 +10,7 @@ interface ResizeHandlesProps {
 }
 
 type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+type Edge = 'top' | 'bottom' | 'left' | 'right';
 
 export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, onResizingChange }) => {
   if (shape.type !== 'rectangle' || !shape.width || !shape.height) {
@@ -20,55 +21,87 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
   const height = shape.height;
   const strokeColor = shape.stroke || '#000000';
 
-  // Calculate corner positions
-  const corners = {
-    topLeft: { x: shape.x, y: shape.y },
-    topRight: { x: shape.x + width, y: shape.y },
-    bottomLeft: { x: shape.x, y: shape.y + height },
-    bottomRight: { x: shape.x + width, y: shape.y + height },
-  };
-
-  const calculateNewDimensions = useCallback((corner: Corner, newX: number, newY: number) => {
-    let newShapeX = shape.x;
-    let newShapeY = shape.y;
+  const calculateNewDimensions = useCallback((corner: Corner, localX: number, localY: number) => {
+    // localX and localY are in the rotated coordinate space of the Group
+    // Calculate new dimensions based on distance from center
     let newWidth = width;
     let newHeight = height;
 
-    // Calculate new dimensions based on which corner is being dragged
     switch (corner) {
       case 'topLeft':
-        newShapeX = newX;
-        newShapeY = newY;
-        newWidth = (shape.x + width) - newX;
-        newHeight = (shape.y + height) - newY;
+        newWidth = Math.abs(localX) * 2;
+        newHeight = Math.abs(localY) * 2;
         break;
       case 'topRight':
-        newShapeY = newY;
-        newWidth = newX - shape.x;
-        newHeight = (shape.y + height) - newY;
+        newWidth = Math.abs(localX) * 2;
+        newHeight = Math.abs(localY) * 2;
         break;
       case 'bottomLeft':
-        newShapeX = newX;
-        newWidth = (shape.x + width) - newX;
-        newHeight = newY - shape.y;
+        newWidth = Math.abs(localX) * 2;
+        newHeight = Math.abs(localY) * 2;
         break;
       case 'bottomRight':
-        newWidth = newX - shape.x;
-        newHeight = newY - shape.y;
+        newWidth = Math.abs(localX) * 2;
+        newHeight = Math.abs(localY) * 2;
         break;
     }
 
-    // Prevent negative dimensions
+    // Prevent dimensions too small
     if (newWidth < 10) newWidth = 10;
     if (newHeight < 10) newHeight = 10;
 
-    // If width or height was at minimum, adjust position back
-    if (newWidth === 10 && (corner === 'topLeft' || corner === 'bottomLeft')) {
-      newShapeX = shape.x + width - 10;
+    // Center position stays the same (shape.x, shape.y)
+    return { newShapeX: shape.x, newShapeY: shape.y, newWidth, newHeight };
+  }, [shape, width, height]);
+
+  const calculateNewDimensionsEdge = useCallback((edge: Edge, localX: number, localY: number) => {
+    // localX and localY are in the rotated coordinate space of the Group
+    // The opposite edge should stay fixed in local space
+    
+    const rotation = (shape.rotation || 0) * Math.PI / 180; // Convert to radians
+    let newWidth = width;
+    let newHeight = height;
+    let localOffsetX = 0;
+    let localOffsetY = 0;
+
+    switch (edge) {
+      case 'top':
+        // Top edge being dragged to localY, bottom edge stays at height/2
+        newHeight = height / 2 - localY; // Distance from dragged top to fixed bottom
+        // New center in local Y = midpoint between localY and height/2
+        localOffsetY = (localY + height / 2) / 2;
+        break;
+      case 'bottom':
+        // Bottom edge being dragged to localY, top edge stays at -height/2
+        newHeight = localY - (-height / 2); // Distance from fixed top to dragged bottom
+        // New center in local Y = midpoint between -height/2 and localY
+        localOffsetY = (-height / 2 + localY) / 2;
+        break;
+      case 'left':
+        // Left edge being dragged to localX, right edge stays at width/2
+        newWidth = width / 2 - localX; // Distance from dragged left to fixed right
+        // New center in local X = midpoint between localX and width/2
+        localOffsetX = (localX + width / 2) / 2;
+        break;
+      case 'right':
+        // Right edge being dragged to localX, left edge stays at -width/2
+        newWidth = localX - (-width / 2); // Distance from fixed left to dragged right
+        // New center in local X = midpoint between -width/2 and localX
+        localOffsetX = (-width / 2 + localX) / 2;
+        break;
     }
-    if (newHeight === 10 && (corner === 'topLeft' || corner === 'topRight')) {
-      newShapeY = shape.y + height - 10;
-    }
+
+    // Prevent dimensions too small
+    if (newWidth < 10) newWidth = 10;
+    if (newHeight < 10) newHeight = 10;
+
+    // Convert local offset to world coordinates using rotation
+    const worldOffsetX = localOffsetX * Math.cos(rotation) - localOffsetY * Math.sin(rotation);
+    const worldOffsetY = localOffsetX * Math.sin(rotation) + localOffsetY * Math.cos(rotation);
+
+    // Apply offset to shape center
+    const newShapeX = shape.x + worldOffsetX;
+    const newShapeY = shape.y + worldOffsetY;
 
     return { newShapeX, newShapeY, newWidth, newHeight };
   }, [shape, width, height]);
@@ -134,12 +167,62 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
     }
   }, [shape, calculateNewDimensions, onUpdate, onResizingChange]);
 
+  const handleEdgeDragMove = useCallback((edge: Edge, e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    const { newShapeX, newShapeY, newWidth, newHeight } = calculateNewDimensionsEdge(edge, newX, newY);
+
+    // Use throttled update during drag (immediate=false)
+    onUpdate({
+      ...shape,
+      x: newShapeX,
+      y: newShapeY,
+      width: newWidth,
+      height: newHeight,
+      updatedAt: Date.now(),
+    }, false);
+
+    // Anchor positions are automatically updated by React re-render
+    // No need to manually reposition since we're in the Group's local coordinate system
+  }, [shape, calculateNewDimensionsEdge, onUpdate]);
+
+  const handleEdgeDragEnd = useCallback((edge: Edge, e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    const { newShapeX, newShapeY, newWidth, newHeight } = calculateNewDimensionsEdge(edge, newX, newY);
+
+    // Use immediate update on drag end for undo/redo
+    onUpdate({
+      ...shape,
+      x: newShapeX,
+      y: newShapeY,
+      width: newWidth,
+      height: newHeight,
+      updatedAt: Date.now(),
+    }, true);
+    
+    // Notify that resizing has ended
+    if (onResizingChange) {
+      onResizingChange(false);
+    }
+  }, [shape, calculateNewDimensionsEdge, onUpdate, onResizingChange]);
+
   return (
-    <Group>
+    <Group
+      x={shape.x}
+      y={shape.y}
+      rotation={shape.rotation || 0}
+    >
       {/* Top-left corner */}
       <Circle
-        x={corners.topLeft.x}
-        y={corners.topLeft.y}
+        x={-width / 2}
+        y={-height / 2}
         radius={6}
         fill="white"
         stroke={strokeColor}
@@ -167,8 +250,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
 
       {/* Top-right corner */}
       <Circle
-        x={corners.topRight.x}
-        y={corners.topRight.y}
+        x={width / 2}
+        y={-height / 2}
         radius={6}
         fill="white"
         stroke={strokeColor}
@@ -196,8 +279,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
 
       {/* Bottom-left corner */}
       <Circle
-        x={corners.bottomLeft.x}
-        y={corners.bottomLeft.y}
+        x={-width / 2}
+        y={height / 2}
         radius={6}
         fill="white"
         stroke={strokeColor}
@@ -225,8 +308,8 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
 
       {/* Bottom-right corner */}
       <Circle
-        x={corners.bottomRight.x}
-        y={corners.bottomRight.y}
+        x={width / 2}
+        y={height / 2}
         radius={6}
         fill="white"
         stroke={strokeColor}
@@ -242,6 +325,138 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
           const container = e.target.getStage()?.container();
           if (container) {
             container.style.cursor = 'nwse-resize';
+          }
+        }}
+        onMouseLeave={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'default';
+          }
+        }}
+      />
+
+      {/* Top edge anchor */}
+      <Circle
+        x={0}
+        y={-height / 2}
+        radius={5}
+        fill="white"
+        stroke={strokeColor}
+        strokeWidth={2}
+        draggable={true}
+        dragBoundFunc={(pos) => {
+          // Keep x at 0, allow y movement
+          return { x: 0, y: pos.y };
+        }}
+        onDragStart={handleCornerDragStart}
+        onDragMove={(e) => handleEdgeDragMove('top', e)}
+        onDragEnd={(e) => handleEdgeDragEnd('top', e)}
+        hitStrokeWidth={10}
+        shadowBlur={5}
+        shadowColor="rgba(0,0,0,0.3)"
+        onMouseEnter={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'ns-resize';
+          }
+        }}
+        onMouseLeave={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'default';
+          }
+        }}
+      />
+
+      {/* Bottom edge anchor */}
+      <Circle
+        x={0}
+        y={height / 2}
+        radius={5}
+        fill="white"
+        stroke={strokeColor}
+        strokeWidth={2}
+        draggable={true}
+        dragBoundFunc={(pos) => {
+          // Keep x at 0, allow y movement
+          return { x: 0, y: pos.y };
+        }}
+        onDragStart={handleCornerDragStart}
+        onDragMove={(e) => handleEdgeDragMove('bottom', e)}
+        onDragEnd={(e) => handleEdgeDragEnd('bottom', e)}
+        hitStrokeWidth={10}
+        shadowBlur={5}
+        shadowColor="rgba(0,0,0,0.3)"
+        onMouseEnter={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'ns-resize';
+          }
+        }}
+        onMouseLeave={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'default';
+          }
+        }}
+      />
+
+      {/* Left edge anchor */}
+      <Circle
+        x={-width / 2}
+        y={0}
+        radius={5}
+        fill="white"
+        stroke={strokeColor}
+        strokeWidth={2}
+        draggable={true}
+        dragBoundFunc={(pos) => {
+          // Keep y at 0, allow x movement
+          return { x: pos.x, y: 0 };
+        }}
+        onDragStart={handleCornerDragStart}
+        onDragMove={(e) => handleEdgeDragMove('left', e)}
+        onDragEnd={(e) => handleEdgeDragEnd('left', e)}
+        hitStrokeWidth={10}
+        shadowBlur={5}
+        shadowColor="rgba(0,0,0,0.3)"
+        onMouseEnter={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'ew-resize';
+          }
+        }}
+        onMouseLeave={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'default';
+          }
+        }}
+      />
+
+      {/* Right edge anchor */}
+      <Circle
+        x={width / 2}
+        y={0}
+        radius={5}
+        fill="white"
+        stroke={strokeColor}
+        strokeWidth={2}
+        draggable={true}
+        dragBoundFunc={(pos) => {
+          // Keep y at 0, allow x movement
+          return { x: pos.x, y: 0 };
+        }}
+        onDragStart={handleCornerDragStart}
+        onDragMove={(e) => handleEdgeDragMove('right', e)}
+        onDragEnd={(e) => handleEdgeDragEnd('right', e)}
+        hitStrokeWidth={10}
+        shadowBlur={5}
+        shadowColor="rgba(0,0,0,0.3)"
+        onMouseEnter={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) {
+            container.style.cursor = 'ew-resize';
           }
         }}
         onMouseLeave={(e) => {

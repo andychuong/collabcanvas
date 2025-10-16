@@ -442,6 +442,10 @@ function App() {
     if (shapeToPlace === 'text') {
       shape.text = 'Double click to edit';
       shape.fontSize = 24;
+      shape.fontFamily = 'Arial';
+      shape.fontWeight = 'normal';
+      shape.fontStyle = 'normal';
+      shape.textDecoration = 'none';
     }
 
     addShapeOptimistic(shape);
@@ -630,6 +634,86 @@ function App() {
     handleShapeUpdate(updatedShape, true);
   }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
+  const handleFontFamilyChange = useCallback((fontFamily: string) => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update font family for text
+    if (shape.type !== 'text') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      fontFamily,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleFontWeightChange = useCallback((fontWeight: 'normal' | 'bold') => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update font weight for text
+    if (shape.type !== 'text') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      fontWeight,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleFontStyleChange = useCallback((fontStyle: 'normal' | 'italic') => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update font style for text
+    if (shape.type !== 'text') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      fontStyle,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleTextDecorationChange = useCallback((textDecoration: 'none' | 'underline') => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only update text decoration for text
+    if (shape.type !== 'text') return;
+
+    const updatedShape: Shape = {
+      ...shape,
+      textDecoration,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
   const handlePositionChange = useCallback((x: number, y: number) => {
     const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
     if (!id) return;
@@ -641,6 +725,52 @@ function App() {
       ...shape,
       x,
       y,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleRotateLeft = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only rotate rectangles
+    if (shape.type !== 'rectangle') return;
+
+    const currentRotation = shape.rotation || 0;
+    const newRotation = currentRotation - 90;
+
+    const updatedShape: Shape = {
+      ...shape,
+      rotation: newRotation,
+      updatedAt: Date.now(),
+    };
+
+    // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleRotateRight = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Only rotate rectangles
+    if (shape.type !== 'rectangle') return;
+
+    const currentRotation = shape.rotation || 0;
+    const newRotation = currentRotation + 90;
+
+    const updatedShape: Shape = {
+      ...shape,
+      rotation: newRotation,
       updatedAt: Date.now(),
     };
 
@@ -744,13 +874,16 @@ function App() {
       if (rectangleShape) {
         const width = Math.abs(x - rectangleInProgress.startX);
         const height = Math.abs(y - rectangleInProgress.startY);
-        const newX = Math.min(x, rectangleInProgress.startX);
-        const newY = Math.min(y, rectangleInProgress.startY);
+        const topLeftX = Math.min(x, rectangleInProgress.startX);
+        const topLeftY = Math.min(y, rectangleInProgress.startY);
+        // Calculate center position (since we use offsetX/offsetY in rendering)
+        const centerX = topLeftX + width / 2;
+        const centerY = topLeftY + height / 2;
         
         const updatedShape: Shape = {
           ...rectangleShape,
-          x: newX,
-          y: newY,
+          x: centerX,
+          y: centerY,
           width: Math.max(width, 1),
           height: Math.max(height, 1),
           updatedAt: Date.now(),
@@ -937,7 +1070,13 @@ function App() {
         onColorChange={handleColorChange}
         onFillColorChange={handleFillColorChange}
         onFontSizeChange={handleFontSizeChange}
+        onFontFamilyChange={handleFontFamilyChange}
+        onFontWeightChange={handleFontWeightChange}
+        onFontStyleChange={handleFontStyleChange}
+        onTextDecorationChange={handleTextDecorationChange}
         onPositionChange={handlePositionChange}
+        onRotateLeft={handleRotateLeft}
+        onRotateRight={handleRotateRight}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
       />

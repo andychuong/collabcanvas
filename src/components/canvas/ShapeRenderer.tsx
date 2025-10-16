@@ -56,14 +56,18 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         if (shape.type === 'rectangle') {
           const hasStroke = shape.stroke && shape.strokeWidth;
           const darkerBorderColor = isSelected && (hasStroke ? shape.stroke : shape.fill) ? darkenColor(hasStroke ? shape.stroke! : shape.fill, 0.4) : undefined;
+          const width = shape.width || 100;
+          const height = shape.height || 100;
           return (
             <Rect
               key={shape.id}
               id={shape.id}
               x={shape.x}
               y={shape.y}
-              width={shape.width || 100}
-              height={shape.height || 100}
+              width={width}
+              height={height}
+              offsetX={width / 2}
+              offsetY={height / 2}
               fill={shape.fill}
               rotation={shape.rotation || 0}
               draggable={isSelected}
@@ -109,6 +113,11 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
           const darkerBorderColor = isSelected && shape.fill ? darkenColor(shape.fill, 0.4) : undefined;
           const isEditing = editingTextId === shape.id;
           
+          // Build fontStyle string for Konva (combines weight and style)
+          const fontWeight = shape.fontWeight || 'normal';
+          const fontStyle = shape.fontStyle || 'normal';
+          const konvaFontStyle = `${fontStyle} ${fontWeight}`;
+          
           return (
             <KonvaText
               key={shape.id}
@@ -117,6 +126,9 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               y={shape.y}
               text={shape.text || 'Text'}
               fontSize={shape.fontSize || 24}
+              fontFamily={shape.fontFamily || 'Arial'}
+              fontStyle={konvaFontStyle}
+              textDecoration={shape.textDecoration || ''}
               fill={shape.fill}
               draggable={isSelected && !isEditing}
               visible={!isEditing}

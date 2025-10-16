@@ -14,6 +14,9 @@ export interface Shape {
   text?: string;
   fontSize?: number;
   fontFamily?: string;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
   textAlign?: 'left' | 'center' | 'right';
   rotation?: number;
   points?: number[]; // For lines
