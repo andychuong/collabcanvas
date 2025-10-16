@@ -27,6 +27,15 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 ## ✨ Features
 
+- **🤖 AI Chat Assistant** ⭐ NEW!
+  - Natural language command interface powered by OpenAI GPT-4
+  - Create shapes with simple text commands (e.g., "Create a red circle at 300, 200")
+  - Manipulate existing shapes (e.g., "Move the blue rectangle to the center")
+  - Generate complex layouts (e.g., "Make a 3x3 grid of squares")
+  - Smart shape identification by type, color, or content
+  - LangChain-powered tool system for precise canvas operations
+  - See [AI_CHAT_GUIDE.md](./AI_CHAT_GUIDE.md) for detailed usage
+
 - **Authentication & User Management**
   - User registration and login system
   - Secure session management
@@ -142,6 +151,7 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Canvas Rendering:** Konva.js + React-Konva
+- **AI Integration:** OpenAI GPT-4 + LangChain
 - **Backend:** Firebase
   - Firebase Authentication (user auth)
   - Firestore (shape persistence)
@@ -188,7 +198,12 @@ Think of it as a shared digital canvas where everyone can work together - perfec
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
    VITE_FIREBASE_DATABASE_URL=your_database_url
+   
+   # For AI Chat Assistant (optional)
+   VITE_OPENAI_API_KEY=your_openai_api_key
    ```
+   
+   See [ENV_SETUP.md](./ENV_SETUP.md) for detailed configuration instructions.
 
 5. **Run development server**
    ```bash
@@ -245,6 +260,16 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
    - View online users in the left sidebar
    - See their cursors moving on the canvas
    - All changes sync instantly across all users
+
+9. **🤖 Use AI Chat Assistant**:
+   - Set up your OpenAI API key in `.env` file (see [ENV_SETUP.md](./ENV_SETUP.md))
+   - Click the chat button in the bottom-right corner
+   - Type natural language commands like:
+     - "Create a red circle at 200, 300"
+     - "Make a 3x3 grid of blue squares"
+     - "Move the rectangle to the center"
+     - "Create a login form with username and password fields"
+   - See [AI_CHAT_GUIDE.md](./AI_CHAT_GUIDE.md) for complete documentation
 
 ### Keyboard Shortcuts
 

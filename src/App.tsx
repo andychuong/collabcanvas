@@ -13,6 +13,7 @@ import { Auth } from './components/Auth';
 import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
 import { Footer } from './components/Footer';
+import { AIChat } from './components/AIChat';
 import { Shape, ShapeType, ViewportState } from './types';
 import { getUserColor, hexToRgba } from './utils/colors';
 import { APP_VERSION, VERSION_KEY } from './config/appVersion';
@@ -1111,6 +1112,17 @@ function App() {
       
       {/* Footer */}
       <Footer />
+      
+      {/* AI Chat Assistant */}
+      <AIChat
+        shapes={shapes}
+        addShape={addShapeOptimistic}
+        updateShape={(shape) => handleShapeUpdate(shape, true)}
+        deleteShape={deleteShape}
+        userId={user.uid}
+        canvasWidth={window.innerWidth}
+        canvasHeight={window.innerHeight - 104}
+      />
     </div>
   );
 }
