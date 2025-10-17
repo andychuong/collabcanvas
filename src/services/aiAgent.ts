@@ -22,11 +22,9 @@ export class CanvasAIAgent {
   private model: ChatOpenAI;
   private context: AIAgentContext;
 
-  constructor(context: AIAgentContext) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
+  constructor(apiKey: string, context: AIAgentContext) {
+    if (!apiKey || !apiKey.trim()) {
+      throw new Error('OpenAI API key is required. Please provide your API key in the settings.');
     }
 
     this.model = new ChatOpenAI({

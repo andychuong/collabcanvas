@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send } from 'lucide-react';
+import { Bot, X, Send, Settings, Key } from 'lucide-react';
 import { CanvasAIAgent } from '../services/aiAgent';
 import { Shape } from '../types';
 
@@ -43,8 +43,22 @@ export const AIChat: React.FC<AIChatProps> = ({
   }]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem('openai_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
+    } else {
+      // Show settings if no key is saved
+      setShowSettings(true);
+    }
+  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -66,8 +80,23 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   }, [inputValue]);
 
+  const handleSaveApiKey = () => {
+    if (tempApiKey.trim()) {
+      setApiKey(tempApiKey.trim());
+      localStorage.setItem('openai_api_key', tempApiKey.trim());
+      setShowSettings(false);
+      setTempApiKey('');
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
+
+    if (!apiKey) {
+      alert('Please set your OpenAI API key in settings first.');
+      setShowSettings(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -83,10 +112,10 @@ export const AIChat: React.FC<AIChatProps> = ({
 
     try {
       console.log('Creating AI agent...');
-      console.log('API Key present:', !!import.meta.env.VITE_OPENAI_API_KEY);
-      console.log('API Key prefix:', import.meta.env.VITE_OPENAI_API_KEY?.substring(0, 8));
+      console.log('API Key present:', !!apiKey);
+      console.log('API Key prefix:', apiKey?.substring(0, 8));
       
-      const agent = new CanvasAIAgent({
+      const agent = new CanvasAIAgent(apiKey, {
         shapes,
         addShape,
         updateShape,
@@ -167,18 +196,71 @@ export const AIChat: React.FC<AIChatProps> = ({
           <Bot className="w-5 h-5" />
           <h3 className="font-semibold">AI Canvas Assistant</h3>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-gray-600 rounded transition-colors"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-1 hover:bg-gray-600 rounded transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-600 rounded transition-colors"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="p-4 bg-gray-50 border-b border-gray-200">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Key className="w-4 h-4" />
+              <span>OpenAI API Key</span>
+            </div>
+            <input
+              type="password"
+              value={tempApiKey}
+              onChange={(e) => setTempApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            />
+            <button
+              onClick={handleSaveApiKey}
+              className="w-full bg-gray-700 hover:bg-gray-800 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              Save API Key
+            </button>
+            <p className="text-xs text-gray-500">
+              Your API key is stored only in your browser and never sent to our servers. 
+              Get your key from{' '}
+              <a
+                href="https://platform.openai.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-700 hover:underline font-medium"
+              >
+                OpenAI
+              </a>
+            </p>
+          </div>
+        </div>
+      )}
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 1 && (
+            {!apiKey && messages.length === 1 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                <p className="font-semibold mb-2">⚠️ No API Key Configured</p>
+                <p>Click the Settings icon (⚙️) above to enter your OpenAI API key before using the AI assistant.</p>
+              </div>
+            )}
+            
+            {apiKey && messages.length === 1 && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
                   Try these example commands:
@@ -237,15 +319,15 @@ export const AIChat: React.FC<AIChatProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command..."
-            disabled={isLoading}
+            placeholder={apiKey ? "Type a command..." : "Set API key first..."}
+            disabled={isLoading || !apiKey}
             rows={1}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed resize-none overflow-hidden"
             style={{ minHeight: '38px', maxHeight: '120px' }}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!inputValue.trim() || isLoading || !apiKey}
             className="bg-gray-700 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors flex-shrink-0"
             title="Send"
           >
