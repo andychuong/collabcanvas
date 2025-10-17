@@ -7,13 +7,27 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 ## 🎨 What You Can Do
 
 - **Create visual content** with shapes (rectangles, circles, lines) and text elements
-- **Collaborate in real-time** with teammates - see their cursors and edits as they happen
+- **Collaborate in real-time** with teammates in group-based workspaces
+- **Team workspaces** - Each group has its own private canvas isolated from other groups
+- **See live edits** - Watch teammates' cursors and changes as they happen
 - **Organize ideas visually** on an infinite canvas with pan and zoom
 - **Edit and move elements** with simple drag-and-drop interactions
 - **Track who's online** with live presence indicators and user lists
+- **Use AI assistant** to create and manipulate shapes with natural language
 - **Access from anywhere** - fully web-based, no installation required
 
 > **📋 Full Feature Set Implemented!** All planned features have been successfully implemented.
+
+## 👥 Group-Based Collaboration
+
+CollabCanvas uses a **group-based workspace system**:
+
+- Each group has its own **isolated canvas** - no interference between teams
+- **Join a group** by entering the group name during registration or login
+- **Create a new group** by entering a unique group name
+- **Invite teammates** by sharing your group name - they enter the same name when registering
+- Groups are identified by normalized names (e.g., "My Team" becomes "my-team")
+- Your group name is displayed in the toolbar next to "CollabCanvas"
 
 ## 🚀 Live Demo
 
@@ -21,9 +35,11 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 
 ## 📖 Quick Links
 
-- **[Architecture](./ARCHITECTURE.md)** - System design and decisions
-- **[Deployment Guide](./DEPLOYMENT.md)** - Deploy to production
-- **[Diagrams](./DIAGRAMS.md)** - Visual system diagrams
+- **[Architecture](./docs/architecture/ARCHITECTURE.md)** - System design and decisions
+- **[Deployment Guide](./docs/deployment/DEPLOYMENT.md)** - Deploy to production
+- **[Setup Guide](./docs/guides/SETUP.md)** - Environment setup and configuration
+- **[AI Chat Guide](./AI_CHAT_GUIDE.md)** - Use the AI assistant feature
+- **[Groups User Guide](./GROUPS_USER_GUIDE.md)** - Understanding group workspaces
 
 ## ✨ Features
 
@@ -41,12 +57,14 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - Integrated in footer with gray theme matching app design
   - See [AI_CHAT_GUIDE.md](./AI_CHAT_GUIDE.md) for detailed usage
 
-- **Authentication & User Management**
-  - User registration and login system
-  - Secure session management
-  - User profiles with unique identifiers
+- **Authentication & Group-Based Collaboration**
+  - User registration and login with group names
+  - Team-based workspaces - each group has its own isolated canvas
+  - Secure session management with Firebase Authentication
+  - User profiles with unique identifiers and colors
   - Pastel color assignment for each user
   - User bubbles with grey borders and black initials
+  - Group name displayed in toolbar header
 
 - **Interactive Canvas**
   - Large workspace (5000x5000 virtual space with boundary clamping)
@@ -219,20 +237,66 @@ Think of it as a shared digital canvas where everyone can work together - perfec
    
    See [ENV_SETUP.md](./ENV_SETUP.md) for detailed configuration instructions.
 
-5. **Run development server**
+5. **Deploy Firestore Security Rules**
+   ```bash
+   firebase login
+   firebase deploy --only firestore:rules,database:rules
+   ```
+   This sets up the group-based access control and permissions.
+
+6. **Run development server**
    ```bash
    npm run dev
    ```
 
+7. **Register your first account**
+   - Open http://localhost:5173 (or the URL shown)
+   - Click "Register"
+   - Enter your details and create a group name
+   - Your teammates use the same group name to join your workspace
+
 ## 📐 Architecture
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the system architecture.
+CollabCanvas uses a **multi-database architecture** optimized for real-time collaboration:
+
+### Database Structure
+
+**Firestore** (Persistent Data):
+```
+groups/
+  {groupId}/
+    - Group metadata (name, memberCount, createdAt)
+    canvases/
+      main-canvas/
+        shapes/
+          {shapeId} - Shape data (type, position, styling, etc.)
+
+users/
+  {userId} - User profile (name, email, color, groupId, groupName)
+```
+
+**Realtime Database** (Ephemeral Data):
+```
+groups/
+  {groupId}/
+    cursors/
+      {userId} - Cursor position (x, y, timestamp)
+    presence/
+      {userId} - Online status (online, lastSeen)
+    selections/
+      {userId} - Selected shape IDs
+```
+
+See [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) for detailed system design.
 
 ## 🎮 Usage
 
 ### Getting Started
 
-1. **Create an account** by signing up with your email and password.
+1. **Create an account** by registering with:
+   - Email and password
+   - Display name
+   - **Group name** - Create a new group or join an existing one by entering the same group name as your teammates
 
 2. **Draw shapes** using the toolbar buttons:
    - **Rectangle**: Click once to place first corner, move mouse to preview, click again to finalize
@@ -317,10 +381,11 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
 ### Multiplayer Testing
 
 1. Open the app in multiple browser windows or tabs
-2. Log in with different accounts in each window
+2. Register/login with different accounts using the **same group name**
 3. Create and move shapes in one window
 4. Watch them appear instantly in all other windows
 5. See each user's cursor moving in real-time
+6. Users in different groups will have completely separate canvases
 
 ## 🧪 Comprehensive Testing
 
@@ -391,11 +456,38 @@ npm install
 # Build the project
 npm run build
 
-# Deploy to Firebase
+# Deploy to Firebase (app + security rules)
 firebase deploy
 ```
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions and troubleshooting.
+See [docs/deployment/DEPLOYMENT.md](./docs/deployment/DEPLOYMENT.md) for detailed deployment instructions.
+
+## 🔧 Troubleshooting
+
+### "Missing or insufficient permissions" Error
+
+If you see this error:
+1. Make sure you deployed the Firestore security rules: `firebase deploy --only firestore:rules`
+2. Sign out and register again with a group name
+3. Check that your user document has a `groupId` field in Firestore
+
+### "Email already in use" Error
+
+If you deleted a user from Firestore but not from Authentication:
+1. Go to Firebase Console → Authentication → Delete the user
+2. Clear browser cache: `localStorage.clear(); sessionStorage.clear(); location.reload();`
+3. Register again
+
+### Group Name Not Showing
+
+If the group name doesn't appear in the toolbar:
+- Make sure you entered a group name during registration
+- The app stores both `groupId` (normalized) and `groupName` (display name)
+- Re-register if you created your account before this feature was added
+
+### Debug Utility
+
+Run `debugUserAuth()` in the browser console to diagnose authentication and group setup issues.
 
 ## 🤝 Contributing
 
