@@ -18,6 +18,7 @@ import { AIChat } from './components/AIChat';
 import { Shape, ShapeType, ViewportState } from './types';
 import { getUserColor, hexToRgba } from './utils/colors';
 import { APP_VERSION, VERSION_KEY } from './config/appVersion';
+import { debugUserAuth } from './utils/debugAuth';
 
 /**
  * COLLABORATIVE EDITING & CONFLICT RESOLUTION STRATEGY:
@@ -49,7 +50,13 @@ import { APP_VERSION, VERSION_KEY } from './config/appVersion';
  */
 function App() {
   const { user, loading: authLoading } = useAuth();
-  const { groupId, groupInfo, loading: groupLoading } = useGroupAuth(user?.uid || null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  
+  // Only fetch group data if user exists and we're not in the middle of registration
+  const shouldFetchGroupData = user && !isRegistering;
+  const { groupId, groupInfo, loading: groupLoading, error: groupError } = useGroupAuth(
+    shouldFetchGroupData ? user.uid : null
+  );
   
   // Version check - sign out users when app version changes (on deployment)
   useEffect(() => {
@@ -186,6 +193,13 @@ function App() {
       fetchUserData();
     }
   }, [user]);
+
+  // Run debug utility when there's a group error
+  useEffect(() => {
+    if (groupError && user) {
+      debugUserAuth();
+    }
+  }, [groupError, user]);
 
   const { cursors, updateCursor } = useCursors(
     user?.uid || null,
@@ -930,6 +944,10 @@ function App() {
       // Mark user offline BEFORE signing out (while still authenticated)
       await markOffline();
       
+      // Give Firestore listeners a moment to process the offline status
+      // before we invalidate the auth token
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Now sign out
       await signOut(auth);
       setSelectedShapeId(null);
@@ -1125,7 +1143,20 @@ function App() {
   }
 
   if (!user) {
-    return <Auth />;
+    return <Auth onRegistrationStart={() => setIsRegistering(true)} onRegistrationComplete={() => setIsRegistering(false)} />;
+  }
+  
+  // Show loading during registration setup
+  if (isRegistering) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-medium">Setting up your account...</p>
+          <p className="text-gray-500 text-sm mt-2">Creating your workspace</p>
+        </div>
+      </div>
+    );
   }
 
   if (groupLoading) {
@@ -1134,6 +1165,41 @@ function App() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading group data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (groupError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-4">
+            <h2 className="text-xl font-bold text-red-800 mb-2">Group Setup Error</h2>
+            <p className="text-red-700 mb-4">{groupError}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  // Retry by refreshing the page
+                  window.location.reload();
+                }}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Retry
+              </button>
+              <button
+                onClick={async () => {
+                  await signOut(auth);
+                }}
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+          <p className="text-gray-600 text-sm">
+            Try clicking "Retry" first. If the issue persists, sign out and register again with a group name.
+          </p>
         </div>
       </div>
     );

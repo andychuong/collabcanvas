@@ -34,6 +34,7 @@ export interface User {
   online: boolean;
   lastSeen: number;
   groupId: string;
+  groupName?: string; // Original display name of the group
 }
 
 export interface GroupInfo {

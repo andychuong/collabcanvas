@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ref, onValue, set, onDisconnect, serverTimestamp } from 'firebase/database';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { rtdb, db } from '../firebase';
 import { User as UserType } from '../types';
 import { getUserColor } from '../utils/colors';
@@ -55,6 +56,8 @@ export const usePresence = (
           const { getAuth } = await import('firebase/auth');
           const currentUser = getAuth().currentUser;
           
+          // Note: We don't have groupName here, but that's okay
+          // It will be set properly during registration in Auth.tsx
           await setDoc(userDocRef, {
             id: userId,
             name: userName || currentUser?.displayName || 'Anonymous',
@@ -129,13 +132,21 @@ export const usePresence = (
       // 1. onDisconnect handler (for unexpected disconnections)
       // 2. markOffline() function (for explicit logout)
       // We can't update RTDB here because user may have already signed out
-      const userDocRef = doc(db, 'users', userId);
-      setDoc(userDocRef, {
-        online: false,
-        lastSeen: Date.now(),
-      }, { merge: true }).catch(() => {
-        // Silently fail - expected during logout
-      });
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        const userDocRef = doc(db, 'users', userId);
+        setDoc(userDocRef, {
+          online: false,
+          lastSeen: Date.now(),
+        }, { merge: true }).catch((error) => {
+          // Silently fail - expected during logout
+          if (error.code !== 'permission-denied') {
+            console.warn('Failed to update user presence on cleanup:', error.code);
+          }
+        });
+      }
     };
   }, [userId, groupId]);
 

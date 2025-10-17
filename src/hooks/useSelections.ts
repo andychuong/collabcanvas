@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { ref, set, onValue } from 'firebase/database';
+import { ref, set, onValue, onDisconnect } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
 import { rtdb } from '../firebase';
 
 interface UserSelection {
@@ -45,17 +46,31 @@ export const useSelections = (
     broadcastSelection();
   }, [userId, userName, userColor, selectedShapeIds, groupId]);
 
-  // Cleanup on unmount
+  // Setup onDisconnect handler and cleanup on unmount
   useEffect(() => {
     if (!userId || !groupId) return;
 
     const userSelectionRef = ref(rtdb, `groups/${groupId}/selections/${userId}`);
     
+    // Set up automatic cleanup when user disconnects
+    onDisconnect(userSelectionRef).set(null).catch((error) => {
+      console.warn('Failed to set onDisconnect handler for selections:', error.code);
+    });
+    
     return () => {
       // Clear selections on unmount
-      set(userSelectionRef, null).catch(() => {
-        // Silently fail during logout
-      });
+      // Check if user is still authenticated before writing
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        set(userSelectionRef, null).catch((error) => {
+          // Silently fail during logout - this is expected
+          if (error.code !== 'PERMISSION_DENIED') {
+            console.warn('Failed to clear selection:', error.code);
+          }
+        });
+      }
     };
   }, [userId, groupId]);
 

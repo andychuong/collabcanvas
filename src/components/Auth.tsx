@@ -19,7 +19,12 @@ const normalizeGroupName = (groupName: string): string => {
     .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
 };
 
-export const Auth: React.FC = () => {
+interface AuthProps {
+  onRegistrationStart?: () => void;
+  onRegistrationComplete?: () => void;
+}
+
+export const Auth: React.FC<AuthProps> = ({ onRegistrationStart, onRegistrationComplete }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +78,9 @@ export const Auth: React.FC = () => {
           throw new Error('Please enter a display name');
         }
 
+        // Notify App that registration is starting
+        onRegistrationStart?.();
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
@@ -81,41 +89,47 @@ export const Auth: React.FC = () => {
           displayName: displayName.trim()
         });
 
-        // Create user document in Firestore with groupId
+        // IMPORTANT: Create group document FIRST to avoid permission issues
+        // Try to create the group - if it already exists, we'll join it instead
+        const groupRef = doc(db, 'groups', groupId);
+        
+        try {
+          // Try to create a new group
+          await setDoc(groupRef, {
+            id: groupId,
+            name: groupName.trim(),
+            createdAt: Date.now(),
+            memberCount: 1
+          });
+        } catch (error: any) {
+          // If creation fails, group might already exist - that's okay
+          // We'll create the user document anyway
+        }
+
+        // Then create user document with groupId AND groupName (display name)
         await setDoc(doc(db, 'users', user.uid), {
           id: user.uid,
           name: displayName.trim(),
           email: email,
           color: getUserColor(user.uid),
           groupId: groupId,
+          groupName: groupName.trim(), // Store original display name
           createdAt: Date.now(),
           online: true,
           lastSeen: Date.now()
         });
-
-        // Create or update group document
-        const groupRef = doc(db, 'groups', groupId);
-        const { getDoc: getGroupDoc, setDoc: setGroupDoc } = await import('firebase/firestore');
-        const groupDoc = await getGroupDoc(groupRef);
         
-        if (!groupDoc.exists()) {
-          // Create new group
-          await setGroupDoc(groupRef, {
-            id: groupId,
-            name: groupName.trim(),
-            createdAt: Date.now(),
-            memberCount: 1
-          });
-        } else {
-          // Increment member count
-          const currentCount = groupDoc.data().memberCount || 0;
-          await setGroupDoc(groupRef, {
-            memberCount: currentCount + 1
-          }, { merge: true });
-        }
+        // Wait a brief moment for Firestore to sync
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Notify App that registration is complete - this will trigger useGroupAuth
+        onRegistrationComplete?.();
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      
+      // Reset registration state on error
+      onRegistrationComplete?.();
     } finally {
       setLoading(false);
     }

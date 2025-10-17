@@ -7,14 +7,18 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Helper function to get user's groupId
-    function getUserGroupId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.groupId;
+    // Helper function to get user data safely
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
     // Helper function to check if user belongs to the group
+    // Checks if user document exists and has matching groupId
     function belongsToGroup(groupId) {
-      return isAuthenticated() && getUserGroupId() == groupId;
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().get('groupId', null) == groupId &&
+             groupId != null;
     }
     
     // Users collection - users can read all users but only write their own
@@ -23,10 +27,16 @@ service cloud.firestore {
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Groups collection - only group members can read group info
+    // Groups collection - allow creation during registration, restrict access after
     match /groups/{groupId} {
+      // Allow reading if user belongs to group
       allow read: if belongsToGroup(groupId);
-      allow write: if belongsToGroup(groupId);
+      
+      // Allow creating new groups (for registration)
+      allow create: if isAuthenticated();
+      
+      // Allow updating/deleting only if user belongs to group
+      allow update, delete: if belongsToGroup(groupId);
       
       // Canvas data within groups - only accessible by group members
       match /canvases/{canvasId}/{document=**} {
