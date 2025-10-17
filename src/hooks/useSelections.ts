@@ -14,13 +14,14 @@ export const useSelections = (
   userId: string | null,
   userName: string,
   userColor: string,
-  selectedShapeIds: string[]
+  selectedShapeIds: string[],
+  groupId: string | null
 ) => {
   // Broadcast current user's selections
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !groupId) return;
 
-    const userSelectionRef = ref(rtdb, `selections/${userId}`);
+    const userSelectionRef = ref(rtdb, `groups/${groupId}/selections/${userId}`);
     
     const broadcastSelection = async () => {
       try {
@@ -42,13 +43,13 @@ export const useSelections = (
     };
 
     broadcastSelection();
-  }, [userId, userName, userColor, selectedShapeIds]);
+  }, [userId, userName, userColor, selectedShapeIds, groupId]);
 
   // Cleanup on unmount
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !groupId) return;
 
-    const userSelectionRef = ref(rtdb, `selections/${userId}`);
+    const userSelectionRef = ref(rtdb, `groups/${groupId}/selections/${userId}`);
     
     return () => {
       // Clear selections on unmount
@@ -56,13 +57,13 @@ export const useSelections = (
         // Silently fail during logout
       });
     };
-  }, [userId]);
+  }, [userId, groupId]);
 
   // Listen to all users' selections
   const subscribeToSelections = useCallback((callback: (selections: Map<string, UserSelection>) => void) => {
-    if (!userId) return () => {};
+    if (!userId || !groupId) return () => {};
 
-    const selectionsRef = ref(rtdb, 'selections');
+    const selectionsRef = ref(rtdb, `groups/${groupId}/selections`);
     
     const unsubscribe = onValue(
       selectionsRef,
@@ -94,7 +95,7 @@ export const useSelections = (
     );
 
     return unsubscribe;
-  }, [userId]);
+  }, [userId, groupId]);
 
   return { subscribeToSelections };
 };

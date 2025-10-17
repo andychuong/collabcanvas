@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { auth, db } from './firebase';
 import { useAuth } from './hooks/useAuth';
+import { useGroupAuth } from './hooks/useGroupAuth';
 import { useShapes } from './hooks/useShapes';
 import { useCursors } from './hooks/useCursors';
 import { usePresence } from './hooks/usePresence';
@@ -48,6 +49,7 @@ import { APP_VERSION, VERSION_KEY } from './config/appVersion';
  */
 function App() {
   const { user, loading: authLoading } = useAuth();
+  const { groupId, groupInfo, loading: groupLoading } = useGroupAuth(user?.uid || null);
   
   // Version check - sign out users when app version changes (on deployment)
   useEffect(() => {
@@ -66,7 +68,7 @@ function App() {
     localStorage.setItem(VERSION_KEY, APP_VERSION);
   }, []);
   
-  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, batchUpdateShapes, throttledUpdateShape, deleteShape } = useShapes();
+  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, batchUpdateShapes, throttledUpdateShape, deleteShape } = useShapes(groupId);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   
@@ -188,14 +190,16 @@ function App() {
   const { cursors, updateCursor } = useCursors(
     user?.uid || null,
     userName,
-    userColor
+    userColor,
+    groupId
   );
 
   const { onlineUsers, markOffline } = usePresence(
     user?.uid || null,
     userName,
     user?.email || undefined,
-    userColor
+    userColor,
+    groupId
   );
 
   // Track selections from other users
@@ -204,7 +208,8 @@ function App() {
     user?.uid || null,
     userName,
     userColor,
-    selectedShapeIds
+    selectedShapeIds,
+    groupId
   );
 
   // Subscribe to other users' selections
@@ -1123,6 +1128,17 @@ function App() {
     return <Auth />;
   }
 
+  if (groupLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading group data...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (shapesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -1165,6 +1181,7 @@ function App() {
         onSendBackward={handleSendBackward}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
+        groupName={groupInfo?.name}
       />
       
       {/* Full-width content container */}

@@ -3,12 +3,17 @@ import { ref, set, onValue, off } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { Cursor } from '../types';
 
-export const useCursors = (userId: string | null, userName: string, userColor: string) => {
+export const useCursors = (userId: string | null, userName: string, userColor: string, groupId: string | null) => {
   const [cursors, setCursors] = useState<Cursor[]>([]);
 
   // Listen to all cursors
   useEffect(() => {
-    const cursorsRef = ref(rtdb, 'cursors');
+    if (!groupId) {
+      setCursors([]);
+      return;
+    }
+
+    const cursorsRef = ref(rtdb, `groups/${groupId}/cursors`);
 
     const handleCursorsUpdate = (snapshot: any) => {
       const cursorsData = snapshot.val() || {};
@@ -33,13 +38,13 @@ export const useCursors = (userId: string | null, userName: string, userColor: s
     return () => {
       off(cursorsRef, 'value', handleCursorsUpdate);
     };
-  }, [userId]);
+  }, [userId, groupId]);
 
   // Update cursor position (throttled)
   const updateCursor = useCallback((x: number, y: number) => {
-    if (!userId) return;
+    if (!userId || !groupId) return;
 
-    const cursorRef = ref(rtdb, `cursors/${userId}`);
+    const cursorRef = ref(rtdb, `groups/${groupId}/cursors/${userId}`);
     set(cursorRef, {
       userId,
       userName,
@@ -48,7 +53,7 @@ export const useCursors = (userId: string | null, userName: string, userColor: s
       color: userColor,
       timestamp: Date.now(),
     });
-  }, [userId, userName, userColor]);
+  }, [userId, userName, userColor, groupId]);
 
   // Throttle cursor updates
   const throttledUpdateCursor = useCallback(

@@ -9,15 +9,21 @@ import {
 import { db } from '../firebase';
 import { Shape } from '../types';
 
-const CANVAS_ID = 'main-canvas'; // Single shared canvas for all users
+const CANVAS_ID = 'main-canvas'; // Canvas identifier within each group
 
-export const useShapes = () => {
+export const useShapes = (groupId: string | null) => {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Subscribe to shapes collection
   useEffect(() => {
-    const shapesRef = collection(db, 'canvases', CANVAS_ID, 'shapes');
+    if (!groupId) {
+      setShapes([]);
+      setLoading(false);
+      return;
+    }
+
+    const shapesRef = collection(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes');
     
     const unsubscribe = onSnapshot(shapesRef, (snapshot) => {
       const shapesData: Shape[] = [];
@@ -37,11 +43,13 @@ export const useShapes = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [groupId]);
 
   const addShape = useCallback(async (shape: Shape) => {
+    if (!groupId) return;
+    
     try {
-      const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shape.id);
+      const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shape.id);
       await setDoc(shapeRef, {
         ...shape,
         createdAt: shape.createdAt || Date.now(),
@@ -50,11 +58,13 @@ export const useShapes = () => {
     } catch (error) {
       console.error('Error adding shape:', error);
     }
-  }, []);
+  }, [groupId]);
 
   const updateShape = useCallback(async (shape: Shape) => {
+    if (!groupId) return;
+    
     try {
-      const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shape.id);
+      const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shape.id);
       
       // Always use current timestamp for "last write wins"
       // The real-time listener will ensure we see the most recent version
@@ -65,14 +75,16 @@ export const useShapes = () => {
     } catch (error) {
       console.error('Error updating shape:', error);
     }
-  }, []);
+  }, [groupId]);
 
   // Batch update multiple shapes at once for better performance
   const batchUpdateShapes = useCallback(async (shapes: Shape[]) => {
+    if (!groupId) return;
+    
     try {
       // Execute all updates in parallel (Firebase SDK handles this efficiently)
       const updatePromises = shapes.map(shape => {
-        const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shape.id);
+        const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shape.id);
         return setDoc(shapeRef, {
           ...shape,
           updatedAt: Date.now(),
@@ -83,7 +95,7 @@ export const useShapes = () => {
     } catch (error) {
       console.error('Error batch updating shapes:', error);
     }
-  }, []);
+  }, [groupId]);
 
   // Throttled version for drag operations with auto-flush
   const throttledUpdateShape = useCallback(
@@ -141,13 +153,15 @@ export const useShapes = () => {
   );
 
   const deleteShape = useCallback(async (shapeId: string) => {
+    if (!groupId) return;
+    
     try {
-      const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shapeId);
+      const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shapeId);
       await deleteDoc(shapeRef);
     } catch (error) {
       console.error('Error deleting shape:', error);
     }
-  }, []);
+  }, [groupId]);
 
   return {
     shapes,

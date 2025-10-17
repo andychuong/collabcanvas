@@ -33,6 +33,14 @@ export interface User {
   color: string;
   online: boolean;
   lastSeen: number;
+  groupId: string;
+}
+
+export interface GroupInfo {
+  id: string; // Normalized group name (lowercase, no spaces)
+  name: string; // Display name
+  createdAt: number;
+  memberCount?: number;
 }
 
 export interface Cursor {

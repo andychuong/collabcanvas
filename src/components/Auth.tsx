@@ -9,11 +9,22 @@ import { auth, db } from '../firebase';
 import { getUserColor } from '../utils/colors';
 import { LogIn, UserPlus } from 'lucide-react';
 
+// Helper function to normalize group name to groupId
+const normalizeGroupName = (groupName: string): string => {
+  return groupName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric with dashes
+    .replace(/-+/g, '-') // Replace multiple dashes with single dash
+    .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
+};
+
 export const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [groupName, setGroupName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,9 +34,39 @@ export const Auth: React.FC = () => {
     setLoading(true);
 
     try {
+      // Validate group name
+      if (!groupName.trim()) {
+        throw new Error('Please enter a group name');
+      }
+
+      const groupId = normalizeGroupName(groupName);
+      if (!groupId) {
+        throw new Error('Invalid group name. Please use letters and numbers.');
+      }
+
       if (isLogin) {
         // Login
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Verify the user belongs to the specified group
+        const { getDoc } = await import('firebase/firestore');
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        
+        if (!userDoc.exists()) {
+          throw new Error('User data not found. Please contact support.');
+        }
+
+        const userData = userDoc.data();
+        const storedGroupId = userData.groupId;
+
+        if (storedGroupId !== groupId) {
+          // Sign out the user since they entered wrong group
+          await auth.signOut();
+          throw new Error('Invalid group name for this account. Please check your group name and try again.');
+        }
+
+        // Group matches - login successful
       } else {
         // Register
         if (!displayName.trim()) {
@@ -40,16 +81,38 @@ export const Auth: React.FC = () => {
           displayName: displayName.trim()
         });
 
-        // Create user document in Firestore
+        // Create user document in Firestore with groupId
         await setDoc(doc(db, 'users', user.uid), {
           id: user.uid,
           name: displayName.trim(),
           email: email,
           color: getUserColor(user.uid),
+          groupId: groupId,
           createdAt: Date.now(),
           online: true,
           lastSeen: Date.now()
         });
+
+        // Create or update group document
+        const groupRef = doc(db, 'groups', groupId);
+        const { getDoc: getGroupDoc, setDoc: setGroupDoc } = await import('firebase/firestore');
+        const groupDoc = await getGroupDoc(groupRef);
+        
+        if (!groupDoc.exists()) {
+          // Create new group
+          await setGroupDoc(groupRef, {
+            id: groupId,
+            name: groupName.trim(),
+            createdAt: Date.now(),
+            memberCount: 1
+          });
+        } else {
+          // Increment member count
+          const currentCount = groupDoc.data().memberCount || 0;
+          await setGroupDoc(groupRef, {
+            memberCount: currentCount + 1
+          }, { merge: true });
+        }
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -294,6 +357,23 @@ export const Auth: React.FC = () => {
               required
               minLength={6}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Group Name
+            </label>
+            <input
+              type="text"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
+              placeholder="e.g., Design Team, Project Alpha"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {isLogin ? 'Enter your group name to access your team canvas' : 'Create a group name for your team'}
+            </p>
           </div>
 
           {error && (

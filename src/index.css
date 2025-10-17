@@ -30,3 +30,18 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* Hardware Acceleration for Canvas - Forces GPU rendering */
+canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Smooth rendering for konva stage container */
+.konvajs-content {
+  will-change: transform;
+  transform: translateZ(0);
+}

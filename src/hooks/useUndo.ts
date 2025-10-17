@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useRef } from 'react';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
 import { Shape, HistoryState } from '../types';
 
 const MAX_HISTORY = 50;
@@ -64,16 +64,26 @@ const undoReducer = (state: UndoState, action: UndoAction): UndoState => {
 };
 
 export const useUndo = (initialShapes: Shape[]) => {
+  const isInitializedRef = useRef(false);
+  
   const [state, dispatch] = useReducer(undoReducer, {
-    history: [{
-      shapes: initialShapes,
-      timestamp: Date.now()
-    }],
-    currentIndex: 0
+    history: [],
+    currentIndex: -1
   });
 
-  const isRestoringRef = useRef(false); // Flag to prevent history updates during undo/redo
-  const lastShapesRef = useRef<string>(JSON.stringify(initialShapes)); // Track last added shapes
+  const isRestoringRef = useRef(false);
+  const lastShapesRef = useRef<string>('');
+  
+  // Initialize history once shapes are loaded from Firestore
+  useEffect(() => {
+    if (!isInitializedRef.current && initialShapes.length > 0) {
+      isInitializedRef.current = true;
+      const shapesJson = JSON.stringify(initialShapes);
+      lastShapesRef.current = shapesJson;
+      // Add the loaded state as the first history entry
+      dispatch({ type: 'ADD_TO_HISTORY', shapes: initialShapes });
+    }
+  }, [initialShapes]);
 
   const addToHistory = useCallback((shapes: Shape[]) => {
     // Skip if currently restoring from undo/redo
@@ -94,14 +104,7 @@ export const useUndo = (initialShapes: Shape[]) => {
 
   const undo = useCallback(() => {
     if (state.currentIndex > 0) {
-      // Check if going back would result in an empty canvas when current canvas has content
-      const currentShapes = state.history[state.currentIndex].shapes;
       const previousShapes = state.history[state.currentIndex - 1].shapes;
-      
-      // Don't allow undo if it would go back to empty state after page load
-      if (previousShapes.length === 0 && currentShapes.length > 0 && state.currentIndex === 1) {
-        return null;
-      }
       
       isRestoringRef.current = true; // Set flag to prevent history update
       dispatch({ type: 'UNDO' });
@@ -126,21 +129,8 @@ export const useUndo = (initialShapes: Shape[]) => {
     isRestoringRef.current = false;
   }, []);
 
-  // Can undo if we're not at the beginning AND it wouldn't go back to empty state after initial load
-  const canUndo = (() => {
-    if (state.currentIndex === 0) return false;
-    
-    const currentShapes = state.history[state.currentIndex].shapes;
-    const previousShapes = state.history[state.currentIndex - 1].shapes;
-    
-    // Don't allow undo if it would go back to empty state from non-empty state at index 1
-    // (This prevents undoing past initial page load)
-    if (previousShapes.length === 0 && currentShapes.length > 0 && state.currentIndex === 1) {
-      return false;
-    }
-    
-    return true;
-  })();
+  // Can undo if we're not at the beginning
+  const canUndo = state.currentIndex > 0;
   
   const canRedo = state.currentIndex < state.history.length - 1;
 

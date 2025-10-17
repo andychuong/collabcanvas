@@ -32,6 +32,7 @@ interface ToolbarProps {
   onSendBackward?: () => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
+  groupName?: string;
 }
 
 // Helper function to get initials from a name
@@ -79,6 +80,7 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onSendBackward,
   isSelectMode,
   onToggleSelectMode,
+  groupName,
 }) => {
   const hasSelection = selectedShapeIds.length > 0;
   
@@ -117,9 +119,19 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
     }}>
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-gray-800 mr-4">CollabCanvas</h1>
+          <h1 className="text-xl font-bold text-gray-800 mr-2">CollabCanvas</h1>
           
-          <div className="flex gap-2">
+          {/* Group Badge */}
+          {groupName && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span className="text-xs font-semibold">{groupName}</span>
+            </div>
+          )}
+          
+          <div className="flex gap-2 ml-2">
             {/* Select Mode Tool */}
             <div className="relative group">
               <button
@@ -509,7 +521,7 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                 <div className="relative group">
                   <button
                     onClick={onDeleteSelected}
-                    className="flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    className="flex items-center justify-center w-10 h-10 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

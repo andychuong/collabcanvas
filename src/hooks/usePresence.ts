@@ -9,13 +9,14 @@ export const usePresence = (
   userId: string | null,
   userName?: string,
   userEmail?: string,
-  userColor?: string
+  userColor?: string,
+  groupId?: string | null
 ) => {
   const [onlineUsers, setOnlineUsers] = useState<UserType[]>([]);
 
   // Optimistically add current user to avoid showing 0 on initial load
   useEffect(() => {
-    if (userId && userName && userColor) {
+    if (userId && userName && userColor && groupId) {
       setOnlineUsers(prev => {
         // Check if current user is already in the list
         const existingUser = prev.find(u => u.id === userId);
@@ -27,18 +28,19 @@ export const usePresence = (
           name: userName,
           email: userEmail || '',
           color: userColor,
+          groupId: groupId,
           online: true,
           lastSeen: Date.now(),
         }, ...prev];
       });
     }
-  }, [userId, userName, userEmail, userColor]);
+  }, [userId, userName, userEmail, userColor, groupId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !groupId) return;
 
     // Set user as online in Realtime Database
-    const userStatusRef = ref(rtdb, `presence/${userId}`);
+    const userStatusRef = ref(rtdb, `groups/${groupId}/presence/${userId}`);
     
     const setOnline = async () => {
       try {
@@ -58,6 +60,7 @@ export const usePresence = (
             name: userName || currentUser?.displayName || 'Anonymous',
             email: userEmail || currentUser?.email || '',
             color: userColor || getUserColor(userId),
+            groupId: groupId,
             createdAt: Date.now(),
             online: true,
             lastSeen: Date.now(),
@@ -134,14 +137,14 @@ export const usePresence = (
         // Silently fail - expected during logout
       });
     };
-  }, [userId]);
+  }, [userId, groupId]);
 
   // Listen to presence changes - only when user is authenticated
   useEffect(() => {
-    // Don't set up listener if user is not authenticated
-    if (!userId) return;
+    // Don't set up listener if user is not authenticated or no groupId
+    if (!userId || !groupId) return;
     
-    const presenceRef = ref(rtdb, 'presence');
+    const presenceRef = ref(rtdb, `groups/${groupId}/presence`);
     
     const unsubscribeRTDB = onValue(
       presenceRef, 
@@ -195,13 +198,13 @@ export const usePresence = (
     return () => {
       unsubscribeRTDB();
     };
-  }, [userId]); // Re-run when userId changes (user logs in/out)
+  }, [userId, groupId]); // Re-run when userId or groupId changes (user logs in/out)
 
   // Expose a manual cleanup function for explicit logout
   const markOffline = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !groupId) return;
     
-    const userStatusRef = ref(rtdb, `presence/${userId}`);
+    const userStatusRef = ref(rtdb, `groups/${groupId}/presence/${userId}`);
     const userDocRef = doc(db, 'users', userId);
     
     try {
@@ -218,7 +221,7 @@ export const usePresence = (
     } catch (error) {
       console.error('Error marking user offline:', error);
     }
-  }, [userId]);
+  }, [userId, groupId]);
 
   return { onlineUsers, markOffline };
 };
