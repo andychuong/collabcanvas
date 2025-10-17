@@ -28,12 +28,17 @@ Think of it as a shared digital canvas where everyone can work together - perfec
 ## ✨ Features
 
 - **🤖 AI Chat Assistant** ⭐ NEW!
-  - Natural language command interface powered by OpenAI GPT-4
+  - Natural language command interface powered by OpenAI GPT-4o (latest model)
+  - 18 specialized tools for canvas operations
   - Create shapes with simple text commands (e.g., "Create a red circle at 300, 200")
-  - Manipulate existing shapes (e.g., "Move the blue rectangle to the center")
+  - Manipulate existing shapes (e.g., "Move the blue rectangle 200 pixels left")
   - Generate complex layouts (e.g., "Make a 3x3 grid of squares")
-  - Smart shape identification by type, color, or content
+  - Layer control (e.g., "Bring the red circle to the front")
+  - Text alignment (e.g., "Center the Login text in the rectangle")
+  - Spatial awareness with blank space detection
+  - Smart shape identification by type, color, or text content
   - LangChain-powered tool system for precise canvas operations
+  - Integrated in footer with gray theme matching app design
   - See [AI_CHAT_GUIDE.md](./AI_CHAT_GUIDE.md) for detailed usage
 
 - **Authentication & User Management**
@@ -140,8 +145,17 @@ Think of it as a shared digital canvas where everyone can work together - perfec
   - **Responsive Layout**: Full-height canvas utilizing all available space
   - **Enhanced Minimap**: Shows cursor X/Y coordinates while panning or zooming
 
+- **Layer Management**
+  - **Bring to Front**: Move shape to top layer (⏫ ChevronsUp icon)
+  - **Bring Forward**: Move shape up one layer (↑ ArrowUp icon)
+  - **Send Backward**: Move shape down one layer (↓ ArrowDown icon)
+  - **Send to Back**: Move shape to bottom layer (⏬ ChevronsDown icon)
+  - **Visual Toolbar**: Clean section with dividers for organization
+  - **Real-time Sync**: Layer changes sync across all users
+  - **Undo/Redo**: Layer operations tracked in history
+
 - **Comprehensive Help System**
-  - **Help Modal**: Accessible via bottom-right footer button
+  - **Help Modal**: Accessible via footer button (next to AI Assistant)
   - **Organized Sections**: Drawing, Editing, Navigation, Selection, Keyboard Shortcuts, Collaboration
   - **Step-by-Step Instructions**: Clear guidance for each feature with context
   - **Keyboard Shortcuts Reference**: Complete list with kbd formatting
@@ -263,12 +277,14 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed explanation of the syste
 
 9. **🤖 Use AI Chat Assistant**:
    - Set up your OpenAI API key in `.env` file (see [ENV_SETUP.md](./ENV_SETUP.md))
-   - Click the chat button in the bottom-right corner
+   - Click "AI Assistant" button in the footer (next to Help)
    - Type natural language commands like:
      - "Create a red circle at 200, 300"
+     - "Move the blue circle 200 pixels left" (relative movement)
      - "Make a 3x3 grid of blue squares"
-     - "Move the rectangle to the center"
-     - "Create a login form with username and password fields"
+     - "Find the text that says 'Login' and center it in the rectangle"
+     - "Bring the red circle to the front" (layer control)
+     - "Find a blank space and create a circle there"
    - See [AI_CHAT_GUIDE.md](./AI_CHAT_GUIDE.md) for complete documentation
 
 ### Keyboard Shortcuts

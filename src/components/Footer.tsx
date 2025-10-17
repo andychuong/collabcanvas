@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Heart, HelpCircle, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Heart, HelpCircle, X, ChevronDown, ChevronRight, Bot } from 'lucide-react';
 
-export const Footer: React.FC = React.memo(() => {
+interface FooterProps {
+  onOpenAIChat?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = React.memo(({ onOpenAIChat }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     drawing: false,
@@ -32,15 +36,27 @@ export const Footer: React.FC = React.memo(() => {
               Made with <Heart className="w-3 h-3 text-red-500 fill-red-500" /> for collaboration
             </div>
 
-            {/* Right side - Help button */}
-            <button
-              onClick={() => setShowHelp(!showHelp)}
-              className="flex items-center gap-1 hover:text-gray-800 transition-colors px-2 py-1 rounded hover:bg-gray-100"
-              title="Help & Shortcuts"
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Help</span>
-            </button>
+            {/* Right side - Buttons */}
+            <div className="flex items-center gap-2">
+              {onOpenAIChat && (
+                <button
+                  onClick={onOpenAIChat}
+                  className="flex items-center gap-1 hover:text-gray-800 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+                  title="AI Assistant"
+                >
+                  <Bot className="w-4 h-4" />
+                  <span>AI Assistant</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowHelp(!showHelp)}
+                className="flex items-center gap-1 hover:text-gray-800 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+                title="Help & Shortcuts"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Help</span>
+              </button>
+            </div>
           </div>
         </div>
       </footer>

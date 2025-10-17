@@ -67,6 +67,24 @@ export const useShapes = () => {
     }
   }, []);
 
+  // Batch update multiple shapes at once for better performance
+  const batchUpdateShapes = useCallback(async (shapes: Shape[]) => {
+    try {
+      // Execute all updates in parallel (Firebase SDK handles this efficiently)
+      const updatePromises = shapes.map(shape => {
+        const shapeRef = doc(db, 'canvases', CANVAS_ID, 'shapes', shape.id);
+        return setDoc(shapeRef, {
+          ...shape,
+          updatedAt: Date.now(),
+        }, { merge: true });
+      });
+      
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error batch updating shapes:', error);
+    }
+  }, []);
+
   // Throttled version for drag operations with auto-flush
   const throttledUpdateShape = useCallback(
     (() => {
@@ -136,6 +154,7 @@ export const useShapes = () => {
     loading,
     addShape,
     updateShape,
+    batchUpdateShapes,
     throttledUpdateShape,
     deleteShape,
   };

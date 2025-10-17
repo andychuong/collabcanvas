@@ -50,12 +50,22 @@ Add text that says "Hello AI!" at 300, 150
 Create a 3x3 grid of blue squares
 ```
 
-### 4. Move Something
+### 4. Move Something (Relative Movement)
 ```
-Move the red circle to the center
+Move the red circle 100 pixels left
 ```
 
-### 5. Build Something Cool
+### 5. Layer Control
+```
+Bring the red circle to the front
+```
+
+### 6. Text Alignment
+```
+Center the Hello AI text in the red circle
+```
+
+### 7. Build Something Cool
 ```
 Create a login form with username and password fields
 ```
@@ -70,8 +80,8 @@ After you're comfortable with basic commands, explore:
 
 ## 💰 Cost Information
 
-- Each command costs approximately **$0.01 - $0.05 USD**
-- Uses GPT-4 Turbo for best results
+- Each command costs approximately **$0.005 - $0.02 USD**
+- Uses GPT-4o (latest model - faster and 50% cheaper)
 - You only pay for what you use (no subscription)
 - Monitor usage in your [OpenAI Dashboard](https://platform.openai.com/usage)
 

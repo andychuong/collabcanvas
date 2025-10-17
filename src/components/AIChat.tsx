@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { Bot, X, Send } from 'lucide-react';
 import { CanvasAIAgent } from '../services/aiAgent';
 import { Shape } from '../types';
 
@@ -11,9 +11,12 @@ interface Message {
 }
 
 interface AIChatProps {
+  isOpen: boolean;
+  onClose: () => void;
   shapes: Shape[];
   addShape: (shape: Shape) => void;
   updateShape: (shape: Shape) => void;
+  batchUpdateShapes?: (shapes: Shape[]) => void;
   deleteShape: (shapeId: string) => void;
   userId: string;
   canvasWidth: number;
@@ -21,15 +24,17 @@ interface AIChatProps {
 }
 
 export const AIChat: React.FC<AIChatProps> = ({
+  isOpen,
+  onClose,
   shapes,
   addShape,
   updateShape,
+  batchUpdateShapes,
   deleteShape,
   userId,
   canvasWidth,
   canvasHeight,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([{
     id: Date.now().toString(),
     role: 'assistant',
@@ -39,7 +44,7 @@ export const AIChat: React.FC<AIChatProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -52,6 +57,14 @@ export const AIChat: React.FC<AIChatProps> = ({
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Auto-resize textarea as user types
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [inputValue]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -77,6 +90,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         shapes,
         addShape,
         updateShape,
+        batchUpdateShapes,
         deleteShape,
         userId,
         canvasWidth,
@@ -84,7 +98,17 @@ export const AIChat: React.FC<AIChatProps> = ({
       });
 
       console.log('Agent created, executing command:', userInput);
-      const response = await agent.execute(userInput);
+      
+      // Build conversation history (exclude welcome message, only include actual conversation)
+      const conversationHistory = messages
+        .slice(1) // Skip welcome message
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+      
+      console.log('Passing conversation history:', conversationHistory.length, 'messages');
+      const response = await agent.execute(userInput, conversationHistory);
       console.log('Response received:', response);
       console.log('Response length:', response?.length);
       console.log('Response type:', typeof response);
@@ -113,7 +137,7 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -132,36 +156,25 @@ export const AIChat: React.FC<AIChatProps> = ({
     inputRef.current?.focus();
   };
 
-  return (
-    <>
-      {/* Floating Chat Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-50"
-          title="Open AI Assistant"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
-      )}
+  // Don't render if not open
+  if (!isOpen) return null;
 
-      {/* Chat Panel */}
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-200">
-          {/* Header */}
-          <div className="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              <h3 className="font-semibold">AI Canvas Assistant</h3>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-indigo-700 rounded transition-colors"
-              title="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+  return (
+    <div className="fixed bottom-[60px] right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-300">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-gray-600 to-gray-700 text-white p-4 rounded-t-lg flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bot className="w-5 h-5" />
+          <h3 className="font-semibold">AI Canvas Assistant</h3>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-gray-600 rounded transition-colors"
+          title="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -192,7 +205,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
                     message.role === 'user'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-gray-700 text-white'
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
@@ -216,32 +229,31 @@ export const AIChat: React.FC<AIChatProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type a command..."
-                disabled={isLoading}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
-                title="Send"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+      {/* Input Area */}
+      <div className="p-4 border-t border-gray-200">
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a command..."
+            disabled={isLoading}
+            rows={1}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed resize-none overflow-hidden"
+            style={{ minHeight: '38px', maxHeight: '120px' }}
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isLoading}
+            className="bg-gray-700 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors flex-shrink-0"
+            title="Send"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 };
 

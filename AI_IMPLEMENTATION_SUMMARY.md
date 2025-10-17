@@ -9,10 +9,12 @@ Successfully implemented a comprehensive AI Chat Assistant for the CollabCanvas 
 ### 1. AI Agent Service (`src/services/aiAgent.ts`)
 
 **Core Features:**
-- `CanvasAIAgent` class that manages OpenAI integration
-- 11 LangChain tools for canvas operations
+- `CanvasAIAgent` class that manages OpenAI GPT-4o integration
+- 18 LangChain tools for canvas operations
 - Smart color parsing (color names → hex codes)
-- Intelligent shape finding by description
+- Intelligent shape finding by description with enhanced text search
+- Spatial awareness and blank space detection
+- Layer management and text alignment
 
 **Tools Implemented:**
 
@@ -20,13 +22,20 @@ Successfully implemented a comprehensive AI Chat Assistant for the CollabCanvas 
 2. **create_rectangle** - Creates rectangles with dimensions and rotation
 3. **create_text** - Adds text with custom styling (font size, weight, family)
 4. **create_line** - Draws lines between two points
-5. **move_shape** - Moves shapes to new positions
-6. **resize_shape** - Changes shape dimensions (with scale factors or absolute values)
-7. **rotate_shape** - Rotates rectangles by degrees
-8. **arrange_horizontal** - Arranges multiple shapes in a row
-9. **create_grid** - Generates grids of shapes (NxM layouts)
-10. **delete_shape** - Removes shapes from canvas
-11. **get_canvas_info** - Queries current canvas state
+5. **move_shape** - Moves shapes to absolute positions
+6. **move_shape_relative** - Moves shapes with relative offsets (dx, dy)
+7. **resize_shape** - Changes shape dimensions (with scale factors or absolute values)
+8. **rotate_shape** - Rotates rectangles by degrees
+9. **arrange_horizontal** - Arranges multiple shapes in a row
+10. **create_grid** - Generates grids of shapes (NxM layouts)
+11. **delete_shape** - Removes shapes from canvas
+12. **get_canvas_info** - Queries current canvas state with positions
+13. **find_blank_space** - Finds empty areas on canvas
+14. **bring_to_front** - Moves shape to top layer
+15. **send_to_back** - Moves shape to bottom layer
+16. **bring_forward** - Moves shape up one layer
+17. **send_backward** - Moves shape down one layer
+18. **align_text_to_shape** - Aligns text to shapes (center, top, bottom, left, right)
 
 **Advanced Features:**
 - Color name mapping (red, blue, green, etc. → hex codes)
@@ -37,26 +46,27 @@ Successfully implemented a comprehensive AI Chat Assistant for the CollabCanvas 
 ### 2. AI Chat UI Component (`src/components/AIChat.tsx`)
 
 **User Interface:**
-- Floating chat button (bottom-right corner)
-- Expandable chat panel (400x600px)
+- Footer button integration (Bot icon)
+- Modal chat panel above footer (384x600px)
 - Message history display
 - Real-time loading indicators
-- Settings panel for API key configuration
+- Environment variable configuration (no UI settings)
 
 **Features:**
-- OpenAI API key management (localStorage)
 - Message threading (user + assistant)
 - Example commands for new users
 - Auto-scroll to latest message
 - Keyboard shortcuts (Enter to send)
 - Typing indicators during processing
+- Controlled component (isOpen/onClose props)
 
 **UX Enhancements:**
-- Welcome message after API key setup
+- Automatic welcome message on open
 - Clickable example commands
-- Clear error messages
-- API key privacy (password field)
+- Clear error messages with console details
+- Gray theme matching app aesthetic
 - Responsive design
+- Positioned above footer for clean integration
 
 ### 3. Integration with Main App (`src/App.tsx`)
 
@@ -173,20 +183,22 @@ Finds shapes by:
 ## Usage Instructions
 
 ### Setup (One-Time)
-1. Click chat button (bottom-right)
-2. Click settings icon
-3. Paste OpenAI API key (from platform.openai.com)
-4. Click "Save API Key"
+1. Get OpenAI API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. Add to `.env` file: `VITE_OPENAI_API_KEY=sk-your-key-here`
+3. Restart dev server
+4. Click "AI Assistant" button in footer (Bot icon)
+5. Start typing commands
 
 ### Basic Usage
-1. Type natural language command
-2. Press Enter or click Send
-3. Watch AI execute command on canvas
-4. See result message in chat
+1. Click "AI Assistant" in footer
+2. Type natural language command
+3. Press Enter or click Send
+4. Watch AI execute command on canvas
+5. See result message in chat
 
 ### Cost Estimation
-- Average command: $0.01 - $0.05 USD
-- Uses GPT-4 Turbo for best results
+- Average command: $0.005 - $0.02 USD (50% cheaper with GPT-4o)
+- Uses GPT-4o (latest model, October 2025)
 - Temperature: 0.1 (consistent, predictable)
 
 ## Documentation Created

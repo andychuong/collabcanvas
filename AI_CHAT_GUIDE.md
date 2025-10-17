@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI Chat Assistant is an intelligent tool that allows you to create and manipulate canvas shapes using natural language commands. It's powered by OpenAI's GPT-4 and LangChain.
+The AI Chat Assistant is an intelligent tool that allows you to create and manipulate canvas shapes using natural language commands. It's powered by OpenAI's GPT-4o (latest model) and LangChain.
 
 ## Setup
 
@@ -83,19 +83,37 @@ Create sophisticated layouts:
 
 ## Available Tools
 
-The AI Assistant has access to the following tools:
+The AI Assistant has access to 18 specialized tools:
 
+### Creation Tools
 1. **create_circle** - Create circles with specified position, radius, and colors
 2. **create_rectangle** - Create rectangles with dimensions and rotation
 3. **create_text** - Add text elements with custom styling
 4. **create_line** - Draw lines between two points
-5. **move_shape** - Move shapes to new positions
-6. **resize_shape** - Change shape dimensions
-7. **rotate_shape** - Rotate rectangles by degrees
-8. **arrange_horizontal** - Arrange shapes in a row
-9. **create_grid** - Generate grids of shapes
-10. **delete_shape** - Remove shapes from the canvas
-11. **get_canvas_info** - Get information about current canvas state
+
+### Movement Tools
+5. **move_shape** - Move shapes to absolute positions
+6. **move_shape_relative** - Move shapes by relative offsets (e.g., "100 pixels left")
+
+### Transformation Tools
+7. **resize_shape** - Change shape dimensions
+8. **rotate_shape** - Rotate rectangles by degrees
+
+### Layout Tools
+9. **arrange_horizontal** - Arrange shapes in a row
+10. **create_grid** - Generate grids of shapes
+
+### Layer Tools
+11. **bring_to_front** - Move shape to top layer
+12. **send_to_back** - Move shape to bottom layer
+13. **bring_forward** - Move shape up one layer
+14. **send_backward** - Move shape down one layer
+
+### Utility Tools
+15. **delete_shape** - Remove shapes from the canvas
+16. **get_canvas_info** - Get information about current canvas state
+17. **find_blank_space** - Find empty areas on canvas
+18. **align_text_to_shape** - Align text to shapes (center, top, bottom, left, right)
 
 ## Tips for Best Results
 
@@ -179,9 +197,10 @@ AI: Moved circle to position (512, 384)
 ## Cost Considerations
 
 - Each command sent to the AI uses OpenAI API credits
-- GPT-4 Turbo is used for optimal performance
-- Typical cost per command: $0.01 - $0.05 USD
+- GPT-4o is used for optimal performance (latest model, 50% cheaper than GPT-4 Turbo)
+- Typical cost per command: $0.005 - $0.02 USD
 - Monitor your usage in the OpenAI dashboard
+- Faster response times (1-3s vs 2-5s)
 
 ## Limitations
 

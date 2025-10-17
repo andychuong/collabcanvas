@@ -11,6 +11,7 @@ interface AIAgentContext {
   shapes: Shape[];
   addShape: (shape: Shape) => void;
   updateShape: (shape: Shape) => void;
+  batchUpdateShapes?: (shapes: Shape[]) => void;
   deleteShape: (shapeId: string) => void;
   userId: string;
   canvasWidth: number;
@@ -30,7 +31,7 @@ export class CanvasAIAgent {
 
     this.model = new ChatOpenAI({
       apiKey: apiKey,
-      modelName: 'gpt-4-turbo-preview',
+      modelName: 'gpt-4o',
       temperature: 0.1,
     });
     this.context = context;
@@ -50,6 +51,10 @@ export class CanvasAIAgent {
       white: '#FFFFFF',
       gray: '#808080',
       grey: '#808080',
+      'dark gray': '#4B5563',
+      'darkgray': '#4B5563',
+      'dark grey': '#4B5563',
+      'darkgrey': '#4B5563',
     };
 
     const normalized = colorStr.toLowerCase().trim();
@@ -63,11 +68,38 @@ export class CanvasAIAgent {
     console.log(`[findShapes] Searching for: "${description}"`);
     console.log(`[findShapes] Total shapes on canvas:`, this.context.shapes.length);
     
+    // Check if description is searching for text content (e.g., "text that says Login", "Login text")
+    const textContentPatterns = [
+      /text.*(?:that says|saying|with|contains?)\s+"?([^"]+)"?/i,
+      /text.*"([^"]+)"/i,
+      /"([^"]+)".*text/i,
+    ];
+    
+    let textContentSearch: string | null = null;
+    for (const pattern of textContentPatterns) {
+      const match = description.match(pattern);
+      if (match) {
+        textContentSearch = match[1].toLowerCase().trim();
+        console.log(`[findShapes] Detected text content search: "${textContentSearch}"`);
+        break;
+      }
+    }
+    
     const matches = this.context.shapes.filter(shape => {
       let typeMatches = false;
       let colorMatches = false;
       let hasTypeInDesc = false;
       let hasColorInDesc = false;
+      
+      // If searching for specific text content, check if this text shape contains it
+      if (textContentSearch && shape.type === 'text' && shape.text) {
+        const shapeTextLower = shape.text.toLowerCase();
+        // Check for exact match or partial match
+        if (shapeTextLower.includes(textContentSearch) || textContentSearch.includes(shapeTextLower)) {
+          console.log(`[findShapes] Shape ${shape.id.substring(0, 8)}: Text content match! "${shape.text}" matches search "${textContentSearch}"`);
+          return true; // Return immediately for text content matches
+        }
+      }
       
       // Check if description mentions a type
       const types: ShapeType[] = ['rectangle', 'circle', 'text', 'line'];
@@ -88,13 +120,13 @@ export class CanvasAIAgent {
           red: '#FF0000', blue: '#0000FF', green: '#00FF00',
           yellow: '#FFFF00', orange: '#FFA500', purple: '#800080',
           pink: '#FFC0CB', black: '#000000', white: '#FFFFFF',
+          gray: '#808080', 'dark gray': '#4B5563',
         });
         
         for (const [name, hex] of colorNames) {
           if (desc.includes(name)) {
             hasColorInDesc = true;
             const colorMatch = shapeColor.toUpperCase().includes(hex.substring(0, 7).toUpperCase());
-            console.log(`[findShapes] Shape ${shape.id.substring(0, 8)}: type=${shape.type}, color=${shapeColor}, checking ${name} (${hex}), match=${colorMatch}`);
             if (colorMatch) {
               colorMatches = true;
             }
@@ -103,9 +135,9 @@ export class CanvasAIAgent {
         }
       }
       
-      // Match by text content
+      // Fallback: Match by simple text content (if not already matched above)
       if (shape.text && desc.includes(shape.text.toLowerCase())) {
-        console.log(`[findShapes] Shape ${shape.id.substring(0, 8)}: Matched by text content`);
+        console.log(`[findShapes] Shape ${shape.id.substring(0, 8)}: Matched by simple text inclusion`);
         return true;
       }
       
@@ -134,6 +166,13 @@ export class CanvasAIAgent {
     });
     
     console.log(`[findShapes] Found ${matches.length} matching shapes`);
+    
+    // Sort by creation time (newest first) to prefer recently created shapes
+    // This prevents accidentally grabbing old shapes when creating new forms
+    matches.sort((a, b) => b.createdAt - a.createdAt);
+    
+    console.log(`[findShapes] Sorted by recency. Newest: ${matches[0]?.id.substring(0, 8)} created ${Date.now() - (matches[0]?.createdAt || 0)}ms ago`);
+    
     return matches;
   }
 
@@ -159,6 +198,7 @@ export class CanvasAIAgent {
           stroke: this.parseColor(color),
           strokeWidth: 2,
           fill: fillColor ? hexToRgba(this.parseColor(fillColor), 0.1) : hexToRgba('#D0D0D0', 0.1),
+          zIndex: 0,
           createdBy: this.context.userId,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -193,6 +233,7 @@ export class CanvasAIAgent {
           strokeWidth: 2,
           fill: fillColor ? hexToRgba(this.parseColor(fillColor), 0.1) : hexToRgba('#D0D0D0', 0.1),
           rotation,
+          zIndex: 0,
           createdBy: this.context.userId,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -228,6 +269,7 @@ export class CanvasAIAgent {
           fontStyle: 'normal',
           textDecoration: 'none',
           fill: this.parseColor(color),
+          zIndex: 0,
           createdBy: this.context.userId,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -259,6 +301,7 @@ export class CanvasAIAgent {
           stroke: this.parseColor(color),
           strokeWidth,
           fill: '',
+          zIndex: 0,
           createdBy: this.context.userId,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -330,6 +373,48 @@ export class CanvasAIAgent {
         };
         this.context.updateShape(updatedShape);
         return `Moved ${shape.type} ${dx < 0 ? 'left' : 'right'} by ${Math.abs(dx)} pixels${dy !== 0 ? ` and ${dy < 0 ? 'up' : 'down'} by ${Math.abs(dy)} pixels` : ''}. New position: (${newX}, ${newY})`;
+      },
+    });
+
+    // Tool 5c: Move multiple shapes
+    const moveMultipleShapesTool = new DynamicStructuredTool({
+      name: 'move_multiple_shapes',
+      description: 'BATCH OPERATION: Moves multiple shapes (2-100+) at once in a single call. ALWAYS use this instead of calling move_shape_relative repeatedly. Use count parameter to move a specific number.',
+      schema: z.object({
+        description: z.string().describe('Description that matches multiple shapes (e.g., "blue circles", "all circles")'),
+        dx: z.number().describe('Pixels to move horizontally (negative = left, positive = right)'),
+        dy: z.number().describe('Pixels to move vertically (negative = up, positive = down)'),
+        count: z.number().optional().describe('Number of shapes to move (moves first N matches)'),
+      }),
+      func: async ({ description, dx, dy, count }) => {
+        const shapes = this.findShapesByDescription(description);
+        
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shapesToMove = count ? shapes.slice(0, count) : shapes;
+        
+        // Use a single timestamp for all updates to maintain consistency
+        const timestamp = Date.now();
+        
+        // Create updated shapes
+        const updatedShapes = shapesToMove.map(shape => ({
+          ...shape,
+          x: shape.x + dx,
+          y: shape.y + dy,
+          updatedAt: timestamp,
+        }));
+        
+        // Use batch update if available (more efficient), otherwise parallel individual updates
+        if (this.context.batchUpdateShapes && updatedShapes.length > 5) {
+          await this.context.batchUpdateShapes(updatedShapes);
+        } else {
+          // Parallel individual updates for smaller batches
+          await Promise.all(updatedShapes.map(shape => this.context.updateShape(shape)));
+        }
+        
+        return `Moved ${shapesToMove.length} shapes matching "${description}" by (${dx}, ${dy})`;
       },
     });
 
@@ -457,6 +542,7 @@ export class CanvasAIAgent {
               stroke: this.parseColor(color),
               strokeWidth: 2,
               fill: hexToRgba('#D0D0D0', 0.1),
+              zIndex: 0,
               createdBy: this.context.userId,
               createdAt: Date.now(),
               updatedAt: Date.now(),
@@ -469,7 +555,75 @@ export class CanvasAIAgent {
       },
     });
 
-    // Tool 10: Delete shape
+    // Tool 10: Create multiple circles
+    const createMultipleCirclesTool = new DynamicStructuredTool({
+      name: 'create_multiple_circles',
+      description: 'BATCH OPERATION: Creates multiple circles at once (5-100+) in a single call. ALWAYS use this instead of calling create_circle repeatedly. Supports grid, row, column, or random patterns.',
+      schema: z.object({
+        count: z.number().describe('Number of circles to create'),
+        startX: z.number().describe('Starting X position'),
+        startY: z.number().describe('Starting Y position'),
+        spacing: z.number().default(80).describe('Space between circles'),
+        pattern: z.enum(['grid', 'row', 'column', 'random']).default('grid').describe('How to arrange the circles'),
+        color: z.string().default('blue').describe('Color of all circles'),
+        radius: z.number().default(30).describe('Radius of each circle'),
+      }),
+      func: async ({ count, startX, startY, spacing, pattern, color, radius }) => {
+        const cols = Math.ceil(Math.sqrt(count));
+        const createdIds: string[] = [];
+        const baseTimestamp = Date.now();
+        
+        // Create all shapes and batch the Firebase writes
+        const createPromises = [];
+        
+        for (let i = 0; i < count; i++) {
+          let x = startX;
+          let y = startY;
+          
+          if (pattern === 'grid') {
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            x = startX + col * spacing;
+            y = startY + row * spacing;
+          } else if (pattern === 'row') {
+            x = startX + i * spacing;
+            y = startY;
+          } else if (pattern === 'column') {
+            x = startX;
+            y = startY + i * spacing;
+          } else if (pattern === 'random') {
+            x = startX + Math.random() * spacing * 5;
+            y = startY + Math.random() * spacing * 5;
+          }
+          
+          const shape: Shape = {
+            id: uuidv4(),
+            type: 'circle',
+            x,
+            y,
+            radius,
+            stroke: this.parseColor(color),
+            strokeWidth: 2,
+            fill: hexToRgba(this.parseColor(color), 0.1),
+            zIndex: 0,
+            createdBy: this.context.userId,
+            createdAt: baseTimestamp + i, // Slight offset for ordering
+            updatedAt: baseTimestamp + i,
+          };
+          
+          // Add shape asynchronously (parallel execution)
+          createPromises.push(this.context.addShape(shape));
+          createdIds.push(shape.id);
+        }
+        
+        // Wait for all shapes to be created (but they execute in parallel)
+        await Promise.all(createPromises);
+        
+        return `Created ${count} ${color} circles in ${pattern} pattern starting at (${startX}, ${startY})`;
+      },
+    });
+
+    // Tool 11: Delete shape
     const deleteShapeTool = new DynamicStructuredTool({
       name: 'delete_shape',
       description: 'Deletes a shape from the canvas',
@@ -615,6 +769,202 @@ export class CanvasAIAgent {
       },
     });
 
+    // Tool 13: Bring to Front
+    const bringToFrontTool = new DynamicStructuredTool({
+      name: 'bring_to_front',
+      description: 'Brings a shape to the front layer (top of stacking order)',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to bring to front'),
+      }),
+      func: async ({ description }) => {
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const maxZIndex = Math.max(...this.context.shapes.map(s => s.zIndex || 0), 0);
+        
+        const updatedShape: Shape = {
+          ...shape,
+          zIndex: maxZIndex + 1,
+          updatedAt: Date.now(),
+        };
+        this.context.updateShape(updatedShape);
+        return `Brought ${shape.type} to front (zIndex: ${maxZIndex + 1})`;
+      },
+    });
+
+    // Tool 14: Send to Back
+    const sendToBackTool = new DynamicStructuredTool({
+      name: 'send_to_back',
+      description: 'Sends a shape to the back layer (bottom of stacking order)',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to send to back'),
+      }),
+      func: async ({ description }) => {
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const minZIndex = Math.min(...this.context.shapes.map(s => s.zIndex || 0), 0);
+        
+        const updatedShape: Shape = {
+          ...shape,
+          zIndex: minZIndex - 1,
+          updatedAt: Date.now(),
+        };
+        this.context.updateShape(updatedShape);
+        return `Sent ${shape.type} to back (zIndex: ${minZIndex - 1})`;
+      },
+    });
+
+    // Tool 15: Bring Forward
+    const bringForwardTool = new DynamicStructuredTool({
+      name: 'bring_forward',
+      description: 'Brings a shape forward one layer in the stacking order',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to bring forward'),
+      }),
+      func: async ({ description }) => {
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const currentZ = shape.zIndex || 0;
+        
+        const updatedShape: Shape = {
+          ...shape,
+          zIndex: currentZ + 1,
+          updatedAt: Date.now(),
+        };
+        this.context.updateShape(updatedShape);
+        return `Brought ${shape.type} forward one layer (zIndex: ${currentZ} → ${currentZ + 1})`;
+      },
+    });
+
+    // Tool 16: Send Backward
+    const sendBackwardTool = new DynamicStructuredTool({
+      name: 'send_backward',
+      description: 'Sends a shape backward one layer in the stacking order',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to send backward'),
+      }),
+      func: async ({ description }) => {
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const currentZ = shape.zIndex || 0;
+        
+        const updatedShape: Shape = {
+          ...shape,
+          zIndex: currentZ - 1,
+          updatedAt: Date.now(),
+        };
+        this.context.updateShape(updatedShape);
+        return `Sent ${shape.type} backward one layer (zIndex: ${currentZ} → ${currentZ - 1})`;
+      },
+    });
+
+    // Tool 17: Align text to shape
+    const alignTextToShapeTool = new DynamicStructuredTool({
+      name: 'align_text_to_shape',
+      description: 'Aligns a text element to a shape. Use ONLY for text you just created in the same command. Be very specific about which text (use exact text content in quotes).',
+      schema: z.object({
+        textDescription: z.string().describe('SPECIFIC description of the text to align - use exact text content in quotes like "text that says Username"'),
+        shapeDescription: z.string().describe('Description of the shape to align to'),
+        alignment: z.enum(['center', 'top', 'bottom', 'left', 'right', 'left-center']).default('center').describe('How to align the text'),
+      }),
+      func: async ({ textDescription, shapeDescription, alignment }) => {
+        console.log(`[align_text] Searching for text: "${textDescription}"`);
+        console.log(`[align_text] Searching for shape: "${shapeDescription}"`);
+        
+        const textShapes = this.findShapesByDescription(textDescription);
+        const targetShapes = this.findShapesByDescription(shapeDescription);
+        
+        console.log(`[align_text] Found ${textShapes.length} text matches, ${targetShapes.length} shape matches`);
+        
+        if (textShapes.length === 0) {
+          return `No text found matching "${textDescription}"`;
+        }
+        if (targetShapes.length === 0) {
+          return `No shape found matching "${shapeDescription}"`;
+        }
+        
+        const textShape = textShapes[0];
+        const targetShape = targetShapes[0];
+        
+        // Safety check: Only align recently created shapes (within last 30 seconds)
+        const textAge = Date.now() - textShape.createdAt;
+        const shapeAge = Date.now() - targetShape.createdAt;
+        
+        console.log(`[align_text] Text age: ${textAge}ms, Shape age: ${shapeAge}ms`);
+        
+        if (textAge > 30000) {
+          console.warn(`[align_text] WARNING: Text is old (${Math.round(textAge/1000)}s), might be existing canvas element!`);
+          return `Warning: The text "${textShape.text}" was created ${Math.round(textAge/1000)} seconds ago. Use align_text_to_shape only for newly created elements. To move existing text, use move_shape or move_shape_relative instead.`;
+        }
+        
+        console.log(`[align_text] Aligning text "${textShape.text}" (ID: ${textShape.id.substring(0, 8)}) to ${targetShape.type}`);
+        
+        if (textShape.type !== 'text') {
+          return `The first item matching "${textDescription}" is not text`;
+        }
+        
+        let newX = targetShape.x;
+        let newY = targetShape.y;
+        
+        const shapeWidth = targetShape.width || (targetShape.radius ? targetShape.radius * 2 : 100);
+        const shapeHeight = targetShape.height || (targetShape.radius ? targetShape.radius * 2 : 100);
+        
+        // Calculate aligned position
+        switch (alignment) {
+          case 'center':
+            newX = targetShape.x;
+            newY = targetShape.y;
+            break;
+          case 'top':
+            newX = targetShape.x;
+            newY = targetShape.y - shapeHeight / 2 + (textShape.fontSize || 24) / 2 + 8;
+            break;
+          case 'bottom':
+            newX = targetShape.x;
+            newY = targetShape.y + shapeHeight / 2 - (textShape.fontSize || 24) / 2 - 8;
+            break;
+          case 'left-center':
+            // Left-aligned with padding, vertically centered (perfect for form labels)
+            newX = targetShape.x - shapeWidth / 2 + (textShape.fontSize || 24) * 2;
+            newY = targetShape.y;
+            break;
+          case 'left':
+            newX = targetShape.x - shapeWidth / 2 + 30;
+            newY = targetShape.y;
+            break;
+          case 'right':
+            newX = targetShape.x + shapeWidth / 2 - 30;
+            newY = targetShape.y;
+            break;
+        }
+        
+        const updatedText: Shape = {
+          ...textShape,
+          x: newX,
+          y: newY,
+          updatedAt: Date.now(),
+        };
+        
+        this.context.updateShape(updatedText);
+        return `Aligned text "${textShape.text}" to ${alignment} of ${targetShape.type} at position (${Math.round(newX)}, ${Math.round(newY)})`;
+      },
+    });
+
     return [
       createCircleTool,
       createRectangleTool,
@@ -622,18 +972,38 @@ export class CanvasAIAgent {
       createLineTool,
       moveShapeTool,
       moveShapeRelativeTool,
+      moveMultipleShapesTool,
       resizeShapeTool,
       rotateShapeTool,
       arrangeHorizontalTool,
       createGridTool,
+      createMultipleCirclesTool,
       deleteShapeTool,
       getCanvasInfoTool,
       findBlankSpaceTool,
+      bringToFrontTool,
+      sendToBackTool,
+      bringForwardTool,
+      sendBackwardTool,
+      alignTextToShapeTool,
     ];
   }
 
-  async execute(userMessage: string): Promise<string> {
+  async execute(userMessage: string, conversationHistory: Array<{role: 'user' | 'assistant', content: string}> = []): Promise<string> {
     const tools = this.createTools();
+
+    // Build conversation history for context
+    const historyMessages: any[] = [];
+    
+    // Add recent conversation history (last 5 exchanges to avoid token bloat)
+    const recentHistory = conversationHistory.slice(-10); // Last 5 user + 5 assistant messages
+    recentHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        historyMessages.push(['human', msg.content]);
+      } else {
+        historyMessages.push(['assistant', msg.content]);
+      }
+    });
 
     const prompt = ChatPromptTemplate.fromMessages([
       ['system', `You are a helpful AI assistant that helps users create and manipulate shapes on a collaborative canvas. 
@@ -643,12 +1013,36 @@ Canvas dimensions: ${this.context.canvasWidth}x${this.context.canvasHeight}
 Center position: (${this.context.canvasWidth / 2}, ${this.context.canvasHeight / 2})
 Current shapes on canvas: ${this.context.shapes.length}
 
-When interpreting commands:
-- For positions, use reasonable coordinates within the canvas bounds (0-${this.context.canvasWidth} for x, 0-${this.context.canvasHeight} for y)
+CRITICAL - Coordinate System Understanding:
+- ALL shape coordinates (x, y) represent the CENTER of the shape, NOT the top-left corner
+- Rectangles: (x, y) = center point. To place top-left at (100, 200) with 200x100 size, use x=200, y=250
+- Circles: (x, y) = center point
+- Text: (x, y) = center point (after recent update)
+- Lines: (x, y) = starting point
+
+When interpreting position commands:
+- If user says "top-left corner at X, Y" for a WxH rectangle: center_x = X + W/2, center_y = Y + H/2
+- If user says "position at X, Y" without specifying corner: use X, Y as center
+- IMPORTANT: Use the EXACT coordinates the user specifies, including negative values
+- Negative coordinates are VALID - do not adjust them to positive values
+- Do not constrain to canvas bounds unless user asks for visible placement
+- User can place shapes anywhere in the infinite canvas space
 - "center" means approximately (${this.context.canvasWidth / 2}, ${this.context.canvasHeight / 2})
 - Default sizes: circles radius 50, rectangles 100x100
-- When creating multiple items (like forms or navigation bars), create each element separately with appropriate spacing
-- For complex layouts, break them down into individual shape creations
+- When creating multiple items, calculate proper spacing based on dimensions
+
+CRITICAL - Batch operations (MUST USE for efficiency):
+- When creating 5+ circles: ALWAYS use create_multiple_circles (NOT individual create_circle)
+  ❌ WRONG: Call create_circle 50 times
+  ✅ CORRECT: Call create_multiple_circles once with count=50
+- When moving 2+ shapes: ALWAYS use move_multiple_shapes (NOT individual move_shape)
+  ❌ WRONG: Call move_shape 25 times
+  ✅ CORRECT: Call move_multiple_shapes once with count=25
+- Examples:
+  "create 50 blue circles" → create_multiple_circles(count=50, color="blue", pattern="grid")
+  "move 25 of them left by 100" → move_multiple_shapes(description="blue circles", count=25, dx=-100)
+  "move 25 to the right by 100" → move_multiple_shapes(description="blue circles", count=25, dx=100)
+- This saves iterations and prevents "max iterations" errors
 
 IMPORTANT for movements:
 - For RELATIVE movements like "move X pixels left/right/up/down", ALWAYS use move_shape_relative with dx/dy offsets
@@ -656,13 +1050,89 @@ IMPORTANT for movements:
   Example: "move 200 pixels left" = dx=-200, dy=0
   Example: "move 50 right and 30 down" = dx=50, dy=30
 - For ABSOLUTE positions like "move to 300, 200" or "move to center", use move_shape with exact x, y coordinates
+- For moving GROUPS: use move_multiple_shapes with count parameter
 
 Spatial awareness:
 - You can use get_canvas_info with includePositions=true to see where all shapes are located
 - You can use find_blank_space to find empty areas on the canvas before placing new shapes
 - This helps avoid overlapping shapes and creates better layouts
 
+Layer controls:
+- You can control the stacking order of shapes using bring_to_front, send_to_back, bring_forward, and send_backward
+- Lower zIndex = behind, higher zIndex = in front
+- Use these when shapes overlap and you need to control which appears on top
+- Examples: "bring the red circle to the front", "send the rectangle to the back"
+
+Text alignment:
+- You can align text to other shapes using align_text_to_shape
+- Supports: center, top, bottom, left, right, left-center alignment
+- For form field labels (Username, Password, etc.): use 'left-center' alignment
+  - This left-aligns text with padding and centers it vertically
+  - Creates proper form input appearance
+- For titles/buttons: use 'center' alignment
+- Examples: 
+  - "align Username text to left-center of input box"
+  - "center the Login text in the button rectangle"
+
+Form creation best practices:
+- ALWAYS create NEW text elements - never move or reuse existing text on the canvas
+- When creating a form, ALWAYS create BOTH rectangles AND text for each field
+- Form structure for each input field:
+  1. Create a rectangle (input box) with black border and white/transparent fill
+  2. Create new text label (Username, Password, etc.)
+  3. Align text to left-center of the rectangle
+- For buttons:
+  1. Create a rectangle with black border
+  2. Create new button text (Login, Submit, etc.)
+  3. Align text to center of the rectangle
+- Use dark gray (#808080 or gray) for field labels (Username, Password)
+- Use black for titles and button text
+- Use left-center alignment for field labels inside input boxes
+- Use center alignment for button text
+- Standard input field size: 200-250px wide, 40-50px tall
+- Add proper spacing between elements (50-70px vertical spacing)
+- Complete workflow: Create rectangle → Create new text → Align text to rectangle
+
+Example: Creating a login form with top-left at (600, -600):
+- Form dimensions: 300w x 400h
+- Container center: x = 600 + 300/2 = 750, y = -600 + 400/2 = -400
+Steps:
+1. Create container rectangle at (750, -400) - 300x400
+2. Create title text "Login" at (750, -550) - black
+3. Create username input rectangle at (750, -470) - 220x45 - black border
+4. Create username text "Username" - dark gray  
+5. Align username text to left-center of username rectangle
+6. Create password input rectangle at (750, -410) - 220x45 - black border
+7. Create password text "Password" - dark gray
+8. Align password text to left-center of password rectangle
+9. Create button rectangle at (750, -340) - 120x40 - black border
+10. Create button text "Login" - black
+11. Align button text to center of button rectangle
+Result: Complete login form with top-left at (600, -600), including negative Y coordinates
+
+CRITICAL - Do NOT touch existing canvas elements:
+- When creating NEW forms/layouts, ONLY manipulate shapes you just created
+- Do NOT move, align, or modify shapes that were on the canvas before your command
+- align_text_to_shape should ONLY be used for text created in the current command
+- If user asks to move existing elements, they will use move_shape commands explicitly
+- Focus on creating new elements, not reorganizing existing ones
+
+IMPORTANT execution guidelines:
+- After completing all requested operations, provide a final response and STOP
+- Don't verify or check your work - trust the tools executed successfully
+- Once shapes are created and positioned, you're done
+- Maximum 15 iterations available - use them wisely
+- REMEMBER: Every input field needs BOTH a rectangle box AND text label
+- Create ALL elements fresh - never reuse existing canvas shapes
+
+Conversation context:
+- You have access to the conversation history above
+- Use context to understand references like "them", "those shapes", "the circles I just created"
+- Build on previous commands naturally
+- Example: User says "create 50 circles" then "move half of them left" - you should remember the 50 circles
+
 Be creative and helpful in interpreting user intent!`],
+      ...historyMessages,
       ['human', '{input}'],
       new MessagesPlaceholder('agent_scratchpad'),
     ]);
@@ -677,7 +1147,7 @@ Be creative and helpful in interpreting user intent!`],
       agent,
       tools,
       verbose: true,
-      maxIterations: 5,
+      maxIterations: 15,
       returnIntermediateSteps: true,
     });
 

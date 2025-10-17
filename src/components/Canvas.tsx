@@ -283,7 +283,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {
     onCursorMove(-1000, -1000); // Move cursor off screen
-    setCursorPosition(null); // Clear cursor position for minimap
+    // Keep the last cursor position displayed (don't clear it)
     
     // End panning if active
     if (isPanning) {
@@ -425,24 +425,39 @@ export const Canvas: React.FC<CanvasProps> = ({
       // Find all shapes that intersect with the selection box
       const selectedIds = shapes.filter((shape) => {
         let shapeBox = {
-          x: shape.x,
-          y: shape.y,
+          x: 0,
+          y: 0,
           width: 0,
           height: 0,
         };
 
         if (shape.type === 'rectangle') {
-          shapeBox.width = shape.width || 0;
-          shapeBox.height = shape.height || 0;
+          const w = shape.width || 0;
+          const h = shape.height || 0;
+          // Rectangles are centered with offsetX/offsetY
+          shapeBox.x = shape.x - w / 2;
+          shapeBox.y = shape.y - h / 2;
+          shapeBox.width = w;
+          shapeBox.height = h;
         } else if (shape.type === 'circle') {
           const radius = shape.radius || 0;
+          // Circles are centered
           shapeBox.x = shape.x - radius;
           shapeBox.y = shape.y - radius;
           shapeBox.width = radius * 2;
           shapeBox.height = radius * 2;
         } else if (shape.type === 'text') {
-          shapeBox.width = 200; // Approximate text width
-          shapeBox.height = shape.fontSize || 24;
+          // Text is now centered with offsetX/offsetY
+          const fontSize = shape.fontSize || 24;
+          const text = shape.text || '';
+          const isBold = shape.fontWeight === 'bold';
+          const charWidth = isBold ? fontSize * 0.65 : fontSize * 0.6;
+          const estimatedWidth = text.length * charWidth;
+          
+          shapeBox.x = shape.x - estimatedWidth / 2;
+          shapeBox.y = shape.y - fontSize / 2;
+          shapeBox.width = estimatedWidth;
+          shapeBox.height = fontSize;
         } else if (shape.type === 'line' && shape.points) {
           const xs = [shape.x + shape.points[0], shape.x + shape.points[2]];
           const ys = [shape.y + shape.points[1], shape.y + shape.points[3]];
@@ -524,7 +539,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
           {/* Shapes layer */}
           <ShapeRenderer
-            shapes={shapes}
+            shapes={[...shapes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))}
             selectedShapeId={selectedShapeId}
             selectedShapeIds={selectedShapeIds}
             editingTextId={editingTextId}
@@ -560,9 +575,21 @@ export const Canvas: React.FC<CanvasProps> = ({
           )}
         </Stage>
 
+        {/* Static cursor position display - always visible in bottom-left */}
+        {cursorPosition && (
+          <div 
+            className="absolute bottom-4 left-4 bg-gray-200 text-black text-sm px-3 py-2 rounded shadow-md font-mono z-40 flex items-center gap-2"
+          >
+            <span className="bg-gray-100 px-1.5 py-0.5 rounded">X:</span>
+            <span>{Math.round(cursorPosition.x)}</span>
+            <span className="bg-gray-100 px-1.5 py-0.5 rounded">Y:</span>
+            <span>{Math.round(cursorPosition.y)}</span>
+          </div>
+        )}
+        
         {/* Minimap - shown during pan/zoom, positioned at bottom-right of canvas */}
         {showMinimap && (
-          <Minimap viewport={viewport} stageSize={stageSize} cursorPosition={cursorPosition} />
+          <Minimap viewport={viewport} stageSize={stageSize} />
         )}
       </div>
       

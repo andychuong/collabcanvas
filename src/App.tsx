@@ -66,7 +66,7 @@ function App() {
     localStorage.setItem(VERSION_KEY, APP_VERSION);
   }, []);
   
-  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, throttledUpdateShape, deleteShape } = useShapes();
+  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, batchUpdateShapes, throttledUpdateShape, deleteShape } = useShapes();
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   
@@ -150,6 +150,7 @@ function App() {
   const [rectangleInProgress, setRectangleInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   const [circleInProgress, setCircleInProgress] = useState<{ shapeId: string; centerX: number; centerY: number } | null>(null);
   const [circleJustFinalized, setCircleJustFinalized] = useState<string | null>(null); // Track circle ID that was just finalized
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   
   // Undo/Redo functionality
   const { undo, redo, canUndo, canRedo, addToHistory, finishRestoring } = useUndo(shapes);
@@ -311,6 +312,7 @@ function App() {
           points: [0, 0, 0, 0], // Start with both points at the same location
           stroke: '#000000',
           strokeWidth: 2,
+          zIndex: 0,
           createdBy: user.uid,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -349,6 +351,7 @@ function App() {
           height: 1,
           stroke: '#000000',
           strokeWidth: 2,
+          zIndex: 0,
           createdBy: user.uid,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -386,6 +389,7 @@ function App() {
           radius: 1, // Start with minimal radius
           stroke: '#000000',
           strokeWidth: 2,
+          zIndex: 0,
           createdBy: user.uid,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -435,6 +439,7 @@ function App() {
       x,
       y,
       fill: shapeToPlace === 'text' ? '#000000' : 'transparent',
+      zIndex: 0,
       createdBy: user.uid,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -529,6 +534,7 @@ function App() {
             id: uuidv4(),
             x: shapeToDuplicate.x + 20,
             y: shapeToDuplicate.y + 20,
+            zIndex: (shapeToDuplicate.zIndex || 0) + 1,
             createdBy: user.uid,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -555,6 +561,7 @@ function App() {
           id: uuidv4(),
           x: shapeToDuplicate.x + 20,
           y: shapeToDuplicate.y + 20,
+          zIndex: (shapeToDuplicate.zIndex || 0) + 1,
           createdBy: user.uid,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -776,6 +783,80 @@ function App() {
     };
 
     // Use immediate update to trigger history
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleBringToFront = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Find the max zIndex
+    const maxZIndex = Math.max(...shapes.map(s => s.zIndex || 0), 0);
+
+    const updatedShape: Shape = {
+      ...shape,
+      zIndex: maxZIndex + 1,
+      updatedAt: Date.now(),
+    };
+
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleSendToBack = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    // Find the min zIndex
+    const minZIndex = Math.min(...shapes.map(s => s.zIndex || 0), 0);
+
+    const updatedShape: Shape = {
+      ...shape,
+      zIndex: minZIndex - 1,
+      updatedAt: Date.now(),
+    };
+
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleBringForward = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    const currentZ = shape.zIndex || 0;
+
+    const updatedShape: Shape = {
+      ...shape,
+      zIndex: currentZ + 1,
+      updatedAt: Date.now(),
+    };
+
+    handleShapeUpdate(updatedShape, true);
+  }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
+
+  const handleSendBackward = useCallback(() => {
+    const id = selectedShapeIds.length === 1 ? selectedShapeIds[0] : selectedShapeId;
+    if (!id) return;
+
+    const shape = shapes.find(s => s.id === id);
+    if (!shape) return;
+
+    const currentZ = shape.zIndex || 0;
+
+    const updatedShape: Shape = {
+      ...shape,
+      zIndex: currentZ - 1,
+      updatedAt: Date.now(),
+    };
+
     handleShapeUpdate(updatedShape, true);
   }, [selectedShapeId, selectedShapeIds, shapes, handleShapeUpdate]);
 
@@ -1078,6 +1159,10 @@ function App() {
         onPositionChange={handlePositionChange}
         onRotateLeft={handleRotateLeft}
         onRotateRight={handleRotateRight}
+        onBringToFront={handleBringToFront}
+        onSendToBack={handleSendToBack}
+        onBringForward={handleBringForward}
+        onSendBackward={handleSendBackward}
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
       />
@@ -1111,13 +1196,16 @@ function App() {
       </div>
       
       {/* Footer */}
-      <Footer />
+      <Footer onOpenAIChat={() => setAiChatOpen(true)} />
       
       {/* AI Chat Assistant */}
       <AIChat
+        isOpen={aiChatOpen}
+        onClose={() => setAiChatOpen(false)}
         shapes={shapes}
         addShape={addShapeOptimistic}
         updateShape={(shape) => handleShapeUpdate(shape, true)}
+        batchUpdateShapes={batchUpdateShapes}
         deleteShape={deleteShape}
         userId={user.uid}
         canvasWidth={window.innerWidth}

@@ -91,7 +91,8 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         minWidth: '100px',
         whiteSpace: 'pre',
         verticalAlign: 'baseline',
-        transform: 'translateY(0)',
+        textAlign: 'center',
+        transform: 'translate(-50%, -50%)',
       }}
     />
   );

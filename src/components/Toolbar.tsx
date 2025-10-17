@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw } from 'lucide-react';
+import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
 import { ShapeType, User as UserType, Shape } from '../types';
 import { ColorPicker } from './ColorPicker';
 
@@ -26,6 +26,10 @@ interface ToolbarProps {
   onPositionChange?: (x: number, y: number) => void;
   onRotateLeft?: () => void;
   onRotateRight?: () => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
+  onBringForward?: () => void;
+  onSendBackward?: () => void;
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
 }
@@ -69,6 +73,10 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onPositionChange,
   onRotateLeft,
   onRotateRight,
+  onBringToFront,
+  onSendToBack,
+  onBringForward,
+  onSendBackward,
   isSelectMode,
   onToggleSelectMode,
 }) => {
@@ -210,6 +218,9 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
 
             {hasSelection && (
               <>
+                {/* Divider */}
+                <div className="h-8 w-px bg-gray-300"></div>
+              
                 {selectedShapeIds.length === 1 && onColorChange && (
                   <>
                     {/* Stroke Color Picker - shown as outline for shapes with fill */}
@@ -412,6 +423,76 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                     )}
                   </div>
                 )}
+
+                {/* Divider */}
+                {selectedShapeIds.length === 1 && (
+                  <div className="h-8 w-px bg-gray-300"></div>
+                )}
+
+                {/* Layer Controls */}
+                {selectedShapeIds.length === 1 && (
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-1">
+                    {onBringToFront && (
+                      <div className="relative group">
+                        <button
+                          onClick={onBringToFront}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Bring to Front"
+                        >
+                          <ChevronsUp className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Bring to Front
+                        </div>
+                      </div>
+                    )}
+                    {onBringForward && (
+                      <div className="relative group">
+                        <button
+                          onClick={onBringForward}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Bring Forward"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Bring Forward
+                        </div>
+                      </div>
+                    )}
+                    {onSendBackward && (
+                      <div className="relative group">
+                        <button
+                          onClick={onSendBackward}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Send Backward"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Send Backward
+                        </div>
+                      </div>
+                    )}
+                    {onSendToBack && (
+                      <div className="relative group">
+                        <button
+                          onClick={onSendToBack}
+                          className="flex items-center justify-center w-8 h-8 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          title="Send to Back"
+                        >
+                          <ChevronsDown className="w-4 h-4" />
+                        </button>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                          Send to Back
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Divider */}
+                <div className="h-8 w-px bg-gray-300"></div>
                 
                 <div className="relative group">
                   <button

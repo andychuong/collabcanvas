@@ -210,27 +210,27 @@ Stakeholder Flow:
 ### aiAgent.ts Key Sections
 
 ```typescript
-Line 1-50:    Imports and interfaces
-Line 51-100:  CanvasAIAgent class setup
-Line 101-180: Color parsing & shape finding
-Line 181-250: create_circle tool
-Line 251-320: create_rectangle tool
-Line 321-390: create_text tool
-Line 391-450: create_line tool
-Line 451-520: Manipulation tools (move, resize, rotate)
-Line 521-600: Layout tools (arrange, grid)
-Line 601-650: Utility tools (delete, info)
-Line 651-750: Agent execution logic
+Line 1-60:    Imports and interfaces
+Line 61-170:  Enhanced text finding with pattern matching
+Line 171-270: Creation tools (circle, rectangle, text, line)
+Line 271-340: Movement tools (absolute + relative)
+Line 341-420: Transformation tools (resize, rotate)
+Line 421-480: Layout tools (arrange, grid)
+Line 481-520: Delete tool
+Line 521-630: Spatial awareness tools (canvas info, blank space)
+Line 631-760: Layer control tools (4 tools)
+Line 761-820: Text alignment tool
+Line 821-900: Agent execution logic with GPT-4o
 ```
 
 ### AIChat.tsx Key Sections
 
 ```typescript
-Line 1-50:    Imports and interfaces
-Line 51-100:  State management
-Line 101-150: API key handling
-Line 151-220: Message sending logic
-Line 221-280: UI rendering (chat panel, messages, input)
+Line 1-35:    Imports, interfaces (controlled component)
+Line 36-55:   State management (messages, input, loading)
+Line 56-115:  Message sending logic with error handling
+Line 116-140: Return null if not open (controlled)
+Line 141-235: UI rendering (gray theme, footer-positioned)
 ```
 
 ## 📦 Dependencies Tree
@@ -280,35 +280,38 @@ collab-canvas
 ## 🎨 UI Components
 
 ### Visual Elements
-- 💬 Floating chat button (bottom-right)
-- 📱 Chat panel (400x600px)
-- ⚙️ Settings icon
+- 🤖 Footer button (Bot icon, next to Help)
+- 📱 Chat panel (384x600px, above footer)
 - 📨 Send button
 - 💭 Message bubbles
 - ⏳ Loading indicator
+- 📋 Example command buttons
 
-### Colors
-- Primary: Indigo (#6366F1)
+### Colors (Gray Theme)
+- Primary: Gray (#4B5563 - gray-600/700)
 - Background: White (#FFFFFF)
-- User messages: Indigo
-- AI messages: Gray
-- Settings: Light gray
+- User messages: Dark gray (#374151 - gray-700)
+- AI messages: Light gray (#F3F4F6 - gray-100)
+- Send button: Dark gray
+- Focus rings: Gray-500
 
 ## 🎯 Entry Points
 
 ### For Users
-1. Click 💬 button in app
+1. Click "AI Assistant" button in footer (🤖 Bot icon)
 2. Or read `QUICKSTART_AI_CHAT.md`
 
 ### For Developers
-1. Start at `src/App.tsx` line 16
-2. Follow to `AIChat.tsx`
-3. Dive into `aiAgent.ts`
+1. Start at `src/App.tsx` - aiChatOpen state and Footer integration
+2. Follow to `src/components/Footer.tsx` - Button component
+3. Dive into `src/components/AIChat.tsx` - Chat UI (controlled component)
+4. Explore `src/services/aiAgent.ts` - 18 tools + GPT-4o agent
 
 ### For Documentation
-1. Begin with `README.md` (updated)
-2. Then `AI_FEATURE_COMPLETE.md`
-3. Explore specific guides as needed
+1. Begin with `README.md` (updated features)
+2. Then `AI_FEATURE_COMPLETE.md` (summary)
+3. Read `AI_AGENT_ARCHITECTURE.md` (technical deep-dive)
+4. Explore specific guides as needed
 
 ---
 

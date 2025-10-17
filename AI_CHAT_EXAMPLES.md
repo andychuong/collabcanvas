@@ -37,12 +37,20 @@ Make a thick line from 150, 150 to 350, 350
 
 ## 🔧 Shape Manipulation
 
-### Moving Shapes
+### Moving Shapes (Absolute)
 ```
 Move the red circle to the center
 Move the blue rectangle to position 400, 300
 Move the text to 500, 200
 Relocate the circle to 250, 250
+```
+
+### Moving Shapes (Relative)
+```
+Move the blue circle 200 pixels left
+Move the rectangle 100 pixels down
+Move the text 50 up and 75 right
+Shift the circle 150 pixels to the right
 ```
 
 ### Resizing
@@ -58,6 +66,21 @@ Resize the blue circle to be 150 pixels in radius
 Rotate the rectangle 90 degrees
 Rotate the blue rectangle left 45 degrees
 Turn the rectangle 180 degrees
+```
+
+### Layer Control
+```
+Bring the red circle to the front
+Send the rectangle to the back
+Move the text layer up one level
+Send the blue shape backward one layer
+```
+
+### Text Alignment
+```
+Center the Login text in the rectangle
+Align the title text to the top of the blue circle
+Center the text that says "Welcome" in the box
 ```
 
 ## 📐 Layout & Arrangement

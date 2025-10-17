@@ -54,10 +54,11 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         const otherUserSelection = getOtherUserSelection(shape.id);
 
         if (shape.type === 'rectangle') {
-          const hasStroke = shape.stroke && shape.strokeWidth;
-          const darkerBorderColor = isSelected && (hasStroke ? shape.stroke : shape.fill) ? darkenColor(hasStroke ? shape.stroke! : shape.fill, 0.4) : undefined;
           const width = shape.width || 100;
           const height = shape.height || 100;
+          const strokeColor = shape.stroke || '#000000';
+          const darkerBorderColor = isSelected ? darkenColor(strokeColor, 0.4) : undefined;
+          
           return (
             <Rect
               key={shape.id}
@@ -75,8 +76,8 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
               onDragStart={(e) => onShapeDragStart(shape.id, e)}
               onDragMove={(e) => onShapeDragMove(shape, e)}
               onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={hasStroke ? shape.stroke : darkerBorderColor}
-              strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
+              stroke={strokeColor}
+              strokeWidth={shape.strokeWidth || 0}
               shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
               shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
               shadowOpacity={otherUserSelection ? 0.8 : undefined}
@@ -118,18 +119,27 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
           const fontStyle = shape.fontStyle || 'normal';
           const konvaFontStyle = `${fontStyle} ${fontWeight}`;
           
+          // Estimate text width for centering (approximate)
+          const fontSize = shape.fontSize || 24;
+          const text = shape.text || 'Text';
+          const isBold = fontWeight === 'bold';
+          const charWidth = isBold ? fontSize * 0.65 : fontSize * 0.6;
+          const estimatedWidth = text.length * charWidth;
+          
           return (
             <KonvaText
               key={shape.id}
               id={shape.id}
               x={shape.x}
               y={shape.y}
-              text={shape.text || 'Text'}
-              fontSize={shape.fontSize || 24}
+              text={text}
+              fontSize={fontSize}
               fontFamily={shape.fontFamily || 'Arial'}
               fontStyle={konvaFontStyle}
               textDecoration={shape.textDecoration || ''}
               fill={shape.fill}
+              offsetX={estimatedWidth / 2}
+              offsetY={fontSize / 2}
               draggable={isSelected && !isEditing}
               visible={!isEditing}
               onClick={(e) => !isEditing && onShapeClick(shape.id, e)}

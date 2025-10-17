@@ -139,10 +139,10 @@ The AI Chat Assistant has been successfully implemented and integrated into Coll
 
 ### Architecture
 ```
-User Input → GPT-4 (via LangChain) → Tool Selection → Canvas Operation → Result
+User Input → GPT-4o (via LangChain) → Tool Selection → Canvas Operation → Result
 ```
 
-### 11 LangChain Tools
+### 18 LangChain Tools
 
 | Tool | Purpose | Parameters |
 |------|---------|------------|
@@ -150,13 +150,20 @@ User Input → GPT-4 (via LangChain) → Tool Selection → Canvas Operation →
 | create_rectangle | Create rectangles | x, y, width, height, color, fillColor, rotation |
 | create_text | Create text | text, x, y, fontSize, color, fontWeight, fontFamily |
 | create_line | Create lines | x1, y1, x2, y2, color, strokeWidth |
-| move_shape | Move shapes | description, x, y |
+| move_shape | Move shapes (absolute) | description, x, y |
+| move_shape_relative | Move shapes (relative) | description, dx, dy |
 | resize_shape | Resize shapes | description, scaleFactor/width/height/radius |
 | rotate_shape | Rotate rectangles | description, degrees |
 | arrange_horizontal | Arrange in rows | startX, y, spacing, count |
 | create_grid | Create grids | rows, cols, startX, startY, cellSize, spacing, color |
 | delete_shape | Delete shapes | description |
-| get_canvas_info | Query canvas | query |
+| get_canvas_info | Query canvas state | includePositions |
+| find_blank_space | Find empty areas | width, height, preferredRegion |
+| bring_to_front | Top layer | description |
+| send_to_back | Bottom layer | description |
+| bring_forward | Up one layer | description |
+| send_backward | Down one layer | description |
+| align_text_to_shape | Align text to shapes | textDescription, shapeDescription, alignment |
 
 ### Smart Features
 
@@ -254,8 +261,8 @@ AI: Moved circle to position (512, 384)
 
 ## 💰 Cost Information
 
-- **Per Command**: ~$0.01 - $0.05 USD
-- **Model**: GPT-4 Turbo Preview
+- **Per Command**: ~$0.005 - $0.02 USD (50% cheaper than GPT-4 Turbo)
+- **Model**: GPT-4o (latest available, October 2025)
 - **Billing**: Pay-per-use (no subscription)
 - **Monitoring**: [platform.openai.com/usage](https://platform.openai.com/usage)
 
