@@ -963,6 +963,205 @@ export class CanvasAIAgent {
       },
     });
 
+    // Tool 18: Create basic layout
+    const createBasicLayoutTool = new DynamicStructuredTool({
+      name: 'create_basic_layout',
+      description: 'Creates a basic webpage layout with header, left navigation, body content area, and footer. Perfect for wireframing or creating UI mockups.',
+      schema: z.object({
+        x: z.number().optional().describe('Optional center x coordinate for the layout (defaults to canvas center)'),
+        y: z.number().optional().describe('Optional center y coordinate for the layout (defaults to canvas center)'),
+        width: z.number().default(800).describe('Total width of the layout in pixels'),
+        height: z.number().default(600).describe('Total height of the layout in pixels'),
+        headerColor: z.string().default('blue').describe('Color for the header section'),
+        navColor: z.string().default('gray').describe('Color for the left navigation section'),
+        bodyColor: z.string().default('white').describe('Color for the main body/content area'),
+        footerColor: z.string().default('dark gray').describe('Color for the footer section'),
+        addLabels: z.boolean().default(true).describe('Whether to add text labels to each section'),
+      }),
+      func: async ({ x, y, width, height, headerColor, navColor, bodyColor, footerColor, addLabels }) => {
+        // Default to center of canvas if not specified
+        const centerX = x ?? this.context.canvasWidth / 2;
+        const centerY = y ?? this.context.canvasHeight / 2;
+        
+        // Calculate positions (top-left origin for easier calculation)
+        const layoutLeft = centerX - width / 2;
+        const layoutTop = centerY - height / 2;
+        
+        // Define section dimensions
+        const headerHeight = height * 0.12; // 12% for header
+        const footerHeight = height * 0.08; // 8% for footer
+        const navWidth = width * 0.2; // 20% for left nav
+        const bodyHeight = height - headerHeight - footerHeight; // Remaining height
+        const bodyWidth = width - navWidth; // Remaining width
+        
+        const shapes: Shape[] = [];
+        
+        // 1. Header (full width, top)
+        const header: Shape = {
+          id: uuidv4(),
+          type: 'rectangle',
+          x: layoutLeft + width / 2,
+          y: layoutTop + headerHeight / 2,
+          width: width,
+          height: headerHeight,
+          stroke: this.parseColor(headerColor),
+          strokeWidth: 2,
+          fill: hexToRgba(this.parseColor(headerColor), 0.2),
+          rotation: 0,
+          zIndex: 0,
+          createdBy: this.context.userId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        shapes.push(header);
+        
+        // 2. Left Navigation (below header, left side)
+        const nav: Shape = {
+          id: uuidv4(),
+          type: 'rectangle',
+          x: layoutLeft + navWidth / 2,
+          y: layoutTop + headerHeight + bodyHeight / 2,
+          width: navWidth,
+          height: bodyHeight,
+          stroke: this.parseColor(navColor),
+          strokeWidth: 2,
+          fill: hexToRgba(this.parseColor(navColor), 0.15),
+          rotation: 0,
+          zIndex: 0,
+          createdBy: this.context.userId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        shapes.push(nav);
+        
+        // 3. Body/Content area (below header, right of nav)
+        const body: Shape = {
+          id: uuidv4(),
+          type: 'rectangle',
+          x: layoutLeft + navWidth + bodyWidth / 2,
+          y: layoutTop + headerHeight + bodyHeight / 2,
+          width: bodyWidth,
+          height: bodyHeight,
+          stroke: this.parseColor(bodyColor),
+          strokeWidth: 2,
+          fill: hexToRgba(this.parseColor(bodyColor), 0.05),
+          rotation: 0,
+          zIndex: 0,
+          createdBy: this.context.userId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        shapes.push(body);
+        
+        // 4. Footer (full width, bottom)
+        const footer: Shape = {
+          id: uuidv4(),
+          type: 'rectangle',
+          x: layoutLeft + width / 2,
+          y: layoutTop + height - footerHeight / 2,
+          width: width,
+          height: footerHeight,
+          stroke: this.parseColor(footerColor),
+          strokeWidth: 2,
+          fill: hexToRgba(this.parseColor(footerColor), 0.2),
+          rotation: 0,
+          zIndex: 0,
+          createdBy: this.context.userId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        shapes.push(footer);
+        
+        // Add text labels if requested
+        if (addLabels) {
+          const headerText: Shape = {
+            id: uuidv4(),
+            type: 'text',
+            x: header.x,
+            y: header.y,
+            text: 'Header',
+            fontSize: Math.min(24, headerHeight * 0.4),
+            fontFamily: 'Arial',
+            fontWeight: 'bold',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            fill: this.parseColor(headerColor),
+            zIndex: 1,
+            createdBy: this.context.userId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          shapes.push(headerText);
+          
+          const navText: Shape = {
+            id: uuidv4(),
+            type: 'text',
+            x: nav.x,
+            y: nav.y,
+            text: 'Navigation',
+            fontSize: Math.min(20, navWidth * 0.15),
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            fill: this.parseColor(navColor),
+            zIndex: 1,
+            createdBy: this.context.userId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          shapes.push(navText);
+          
+          const bodyText: Shape = {
+            id: uuidv4(),
+            type: 'text',
+            x: body.x,
+            y: body.y,
+            text: 'Main Content',
+            fontSize: Math.min(28, bodyWidth * 0.06),
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            fill: '#666666',
+            zIndex: 1,
+            createdBy: this.context.userId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          shapes.push(bodyText);
+          
+          const footerText: Shape = {
+            id: uuidv4(),
+            type: 'text',
+            x: footer.x,
+            y: footer.y,
+            text: 'Footer',
+            fontSize: Math.min(18, footerHeight * 0.4),
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            fill: this.parseColor(footerColor),
+            zIndex: 1,
+            createdBy: this.context.userId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          shapes.push(footerText);
+        }
+        
+        // Add all shapes using batch update if available
+        if (this.context.batchUpdateShapes) {
+          this.context.batchUpdateShapes(shapes);
+        } else {
+          shapes.forEach(shape => this.context.addShape(shape));
+        }
+        
+        return `Created a basic layout (${width}x${height}) with header (${headerColor}), left navigation (${navColor}), body (${bodyColor}), and footer (${footerColor}) at position (${Math.round(centerX)}, ${Math.round(centerY)})${addLabels ? ' with labels' : ''}`;
+      },
+    });
+
     return [
       createCircleTool,
       createRectangleTool,
@@ -984,6 +1183,7 @@ export class CanvasAIAgent {
       bringForwardTool,
       sendBackwardTool,
       alignTextToShapeTool,
+      createBasicLayoutTool,
     ];
   }
 
