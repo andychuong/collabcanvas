@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react';
-import { Layer, Rect, Circle, Text as KonvaText, Line } from 'react-konva';
+import { Layer, Rect, Circle, Text as KonvaText, Line, Arrow } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from '../../types';
 import { darkenColor } from '../../utils/canvasHelpers';
@@ -114,6 +114,102 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
                 onDragEnd={(e) => onShapeDragEnd(shape, e)}
                 stroke={strokeColor}
                 strokeWidth={shape.strokeWidth || 0}
+                shadowBlur={isSelected ? 10 : 0}
+                shadowColor={isSelected ? darkerBorderColor : undefined}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </Fragment>
+          );
+        }
+
+        if (shape.type === 'arrow') {
+          const width = shape.width || 100;
+          const height = shape.height || 100;
+          const strokeColor = shape.stroke || '#000000';
+          const darkerBorderColor = isSelected ? darkenColor(strokeColor, 0.4) : undefined;
+          
+          // Arrow head dimensions
+          const pointerLength = Math.min(width * 0.2, height * 0.6); // 20% of width or 60% of height, whichever is smaller
+          const pointerWidth = height * 0.8; // 80% of height for arrow head width
+          
+          // Calculate proportional stroke width based on arrow height
+          // Scale the tail thickness with the arrow head size
+          // Use ranges: height 20-40 → stroke 2-4, height 40-100 → stroke 4-8, height 100+ → stroke 8-12
+          let calculatedStrokeWidth: number;
+          if (height <= 40) {
+            calculatedStrokeWidth = 2 + (height - 20) / 20 * 2; // 2-4px
+          } else if (height <= 100) {
+            calculatedStrokeWidth = 4 + (height - 40) / 60 * 4; // 4-8px
+          } else {
+            calculatedStrokeWidth = 8 + Math.min((height - 100) / 100 * 4, 4); // 8-12px max
+          }
+          const scaledStrokeWidth = Math.max(2, Math.min(12, calculatedStrokeWidth)); // Clamp between 2-12px
+          
+          // Calculate arrow points: account for arrow head so total visual width = width
+          // Arrow head extends from the end point, so we need to subtract pointerLength
+          const points = [-width / 2, 0, width / 2 - pointerLength, 0];
+          
+          return (
+            <Fragment key={shape.id}>
+              {/* Outer glow for other users' selections */}
+              {otherUserSelection && (
+                <>
+                  {/* Glow layer */}
+                  <Arrow
+                    x={shape.x}
+                    y={shape.y}
+                    points={points}
+                    rotation={shape.rotation || 0}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={scaledStrokeWidth + 6}
+                    opacity={0.4}
+                    listening={false}
+                    shadowBlur={25}
+                    shadowColor={otherUserSelection.color}
+                    shadowOpacity={1}
+                    pointerLength={pointerLength}
+                    pointerWidth={pointerWidth}
+                    fill={otherUserSelection.color}
+                  />
+                  {/* Solid outline */}
+                  <Arrow
+                    x={shape.x}
+                    y={shape.y}
+                    points={points}
+                    rotation={shape.rotation || 0}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={scaledStrokeWidth + 2}
+                    opacity={0.9}
+                    listening={false}
+                    pointerLength={pointerLength}
+                    pointerWidth={pointerWidth}
+                    fill={otherUserSelection.color}
+                  />
+                </>
+              )}
+              <Arrow
+                id={shape.id}
+                x={shape.x}
+                y={shape.y}
+                points={points}
+                rotation={shape.rotation || 0}
+                fill={shape.fill}
+                stroke={strokeColor}
+                strokeWidth={scaledStrokeWidth}
+                pointerLength={pointerLength}
+                pointerWidth={pointerWidth}
+                draggable={isSelected}
+                onClick={(e) => onShapeClick(shape.id, e)}
+                onDragStart={(e) => onShapeDragStart(shape.id, e)}
+                onDragMove={(e) => onShapeDragMove(shape, e)}
+                onDragEnd={(e) => onShapeDragEnd(shape, e)}
                 shadowBlur={isSelected ? 10 : 0}
                 shadowColor={isSelected ? darkerBorderColor : undefined}
                 onMouseEnter={(e) => {
@@ -371,6 +467,19 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
         .map(shape => (
           <ResizeHandles
             key={`handles-${shape.id}`}
+            shape={shape}
+            onUpdate={onShapeUpdate}
+            onResizingChange={onResizingChange}
+          />
+        ))
+      }
+      
+      {/* Render resize handles for selected arrows (hidden while dragging) */}
+      {!isDragging && shapes
+        .filter(shape => shape.type === 'arrow' && (shape.id === selectedShapeId || selectedShapeIds.includes(shape.id)))
+        .map(shape => (
+          <ResizeHandles
+            key={`arrow-handles-${shape.id}`}
             shape={shape}
             onUpdate={onShapeUpdate}
             onResizingChange={onResizingChange}

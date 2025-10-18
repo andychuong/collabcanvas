@@ -930,11 +930,11 @@ export class CanvasAIAgent {
             break;
           case 'top':
             newX = targetShape.x;
-            newY = targetShape.y - shapeHeight / 2 + (textShape.fontSize || 24) / 2 + 8;
+            newY = targetShape.y - shapeHeight / 2 + (textShape.fontSize || 24) / 2 + 20;
             break;
           case 'bottom':
             newX = targetShape.x;
-            newY = targetShape.y + shapeHeight / 2 - (textShape.fontSize || 24) / 2 - 8;
+            newY = targetShape.y + shapeHeight / 2 - (textShape.fontSize || 24) / 2 - 20;
             break;
           case 'left-center':
             // Left-aligned with padding, vertically centered (perfect for form labels)
@@ -1096,16 +1096,17 @@ Example: Creating a login form with top-left at (600, -600):
 - Container center: x = 600 + 300/2 = 750, y = -600 + 400/2 = -400
 Steps:
 1. Create container rectangle at (750, -400) - 300x400
-2. Create title text "Login" at (750, -550) - black
-3. Create username input rectangle at (750, -470) - 220x45 - black border
-4. Create username text "Username" - dark gray  
-5. Align username text to left-center of username rectangle
-6. Create password input rectangle at (750, -410) - 220x45 - black border
-7. Create password text "Password" - dark gray
-8. Align password text to left-center of password rectangle
-9. Create button rectangle at (750, -340) - 120x40 - black border
-10. Create button text "Login" - black
-11. Align button text to center of button rectangle
+2. Create title text "Login" - black
+3. Align title text to 'top' of container rectangle (automatic 20px padding)
+4. Create username input rectangle at (750, -470) - 220x45 - black border
+5. Create username text "Username" - dark gray  
+6. Align username text to left-center of username rectangle
+7. Create password input rectangle at (750, -410) - 220x45 - black border
+8. Create password text "Password" - dark gray
+9. Align password text to left-center of password rectangle
+10. Create button rectangle at (750, -340) - 120x40 - black border
+11. Create button text "Login" - black
+12. Align button text to center of button rectangle
 Result: Complete login form with top-left at (600, -600), including negative Y coordinates
 
 CRITICAL - Do NOT touch existing canvas elements:

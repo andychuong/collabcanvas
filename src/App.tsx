@@ -160,6 +160,7 @@ function App() {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [lineInProgress, setLineInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   const [rectangleInProgress, setRectangleInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
+  const [arrowInProgress, setArrowInProgress] = useState<{ shapeId: string; startX: number; startY: number } | null>(null);
   const [circleInProgress, setCircleInProgress] = useState<{ shapeId: string; centerX: number; centerY: number } | null>(null);
   const [circleJustFinalized, setCircleJustFinalized] = useState<string | null>(null); // Track circle ID that was just finalized
   const [aiChatOpen, setAiChatOpen] = useState(false);
@@ -315,6 +316,8 @@ function App() {
     setLineInProgress,
     rectangleInProgress,
     setRectangleInProgress,
+    arrowInProgress,
+    setArrowInProgress,
     circleInProgress,
     setCircleInProgress,
     setShapeToPlace,
@@ -476,6 +479,30 @@ function App() {
       }
     }
     
+    // If we're in the middle of placing an arrow, update its dimensions
+    if (arrowInProgress && shapeToPlace === 'arrow') {
+      const arrowShape = shapes.find(s => s.id === arrowInProgress.shapeId);
+      if (arrowShape) {
+        const width = Math.abs(x - arrowInProgress.startX);
+        const height = Math.abs(y - arrowInProgress.startY);
+        const topLeftX = Math.min(x, arrowInProgress.startX);
+        const topLeftY = Math.min(y, arrowInProgress.startY);
+        // Calculate center position (since we use offsetX/offsetY in rendering)
+        const centerX = topLeftX + width / 2;
+        const centerY = topLeftY + height / 2;
+        
+        const updatedShape: Shape = {
+          ...arrowShape,
+          x: centerX,
+          y: centerY,
+          width: Math.max(width, 1),
+          height: Math.max(height, 40), // Keep minimum height for arrow head
+          updatedAt: Date.now(),
+        };
+        handleShapeUpdate(updatedShape, false); // Use throttled updates for smooth rendering
+      }
+    }
+    
     // If we're in the middle of placing a circle, update its radius
     if (circleInProgress && shapeToPlace === 'circle') {
       const circleShape = shapes.find(s => s.id === circleInProgress.shapeId);
@@ -493,7 +520,7 @@ function App() {
         handleShapeUpdate(updatedShape, false); // Use throttled updates for smooth rendering
       }
     }
-  }, [updateCursor, lineInProgress, rectangleInProgress, circleInProgress, shapeToPlace, shapes, handleShapeUpdate]);
+  }, [updateCursor, lineInProgress, rectangleInProgress, arrowInProgress, circleInProgress, shapeToPlace, shapes, handleShapeUpdate]);
 
   const handleViewportChange = useCallback((newViewport: ViewportState) => {
     setViewport(newViewport);
@@ -510,6 +537,7 @@ function App() {
     shapeToPlace,
     lineInProgress,
     rectangleInProgress,
+    arrowInProgress,
     circleInProgress,
     handleDeleteSelected,
     handleUndo,
@@ -518,6 +546,7 @@ function App() {
     deleteShape,
     setLineInProgress,
     setRectangleInProgress,
+    setArrowInProgress,
     setCircleInProgress,
     setShapeToPlace,
     setSelectedShapeId,

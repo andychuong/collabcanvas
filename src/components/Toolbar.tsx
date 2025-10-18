@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
+import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, ArrowRight } from 'lucide-react';
 import { ShapeType, User as UserType, Shape } from '../types';
 import { ColorPicker } from './ColorPicker';
 
@@ -89,17 +89,17 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
     ? shapes.find(s => s.id === selectedShapeIds[0])
     : null;
   
-  // For stroke-based shapes (line, rectangle, circle), show stroke color
+  // For stroke-based shapes (line, rectangle, circle, arrow), show stroke color
   // For text, show fill color
-  const currentStrokeColor = selectedShape?.type === 'line' || selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle'
+  const currentStrokeColor = selectedShape?.type === 'line' || selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle' || selectedShape?.type === 'arrow'
     ? selectedShape.stroke || '#000000'
     : selectedShape?.fill || '#000000';
   
-  // Get fill color for rectangles and circles
+  // Get fill color for rectangles, circles, and arrows
   const currentFillColor = selectedShape?.fill || 'transparent';
   
-  // Check if selected shape is a rectangle or circle (shapes that can have both stroke and fill)
-  const canHaveFill = selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle';
+  // Check if selected shape is a rectangle, circle, or arrow (shapes that can have both stroke and fill)
+  const canHaveFill = selectedShape?.type === 'rectangle' || selectedShape?.type === 'circle' || selectedShape?.type === 'arrow';
   
   // Show max 10 users, then show "+N" for additional users
   const maxVisibleUsers = 10;
@@ -171,6 +171,18 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
               </button>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
                 Circle
+              </div>
+            </div>
+            
+            <div className="relative group">
+              <button
+                onClick={() => onAddShape('arrow')}
+                className="flex items-center justify-center p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                Arrow
               </div>
             </div>
             
@@ -402,8 +414,8 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                   </div>
                 )}
 
-                {/* Rotation Controls (only for rectangles) */}
-                {selectedShapeIds.length === 1 && selectedShape?.type === 'rectangle' && (
+                {/* Rotation Controls (only for rectangles and arrows) */}
+                {selectedShapeIds.length === 1 && (selectedShape?.type === 'rectangle' || selectedShape?.type === 'arrow') && (
                   <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-1">
                     {onRotateLeft && (
                       <div className="relative group">

@@ -7,6 +7,7 @@ interface UseKeyboardShortcutsProps {
   shapeToPlace: ShapeType | null;
   lineInProgress: { shapeId: string; startX: number; startY: number } | null;
   rectangleInProgress: { shapeId: string; startX: number; startY: number } | null;
+  arrowInProgress: { shapeId: string; startX: number; startY: number } | null;
   circleInProgress: { shapeId: string; centerX: number; centerY: number } | null;
   shapes: Shape[];
   handleDeleteSelected: () => void;
@@ -18,6 +19,7 @@ interface UseKeyboardShortcutsProps {
   setViewport: (viewport: ViewportState) => void;
   setLineInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
   setRectangleInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
+  setArrowInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
   setCircleInProgress: (value: { shapeId: string; centerX: number; centerY: number } | null) => void;
   setShapeToPlace: (type: ShapeType | null) => void;
   setSelectedShapeId: (id: string | null) => void;
@@ -31,6 +33,7 @@ export const useKeyboardShortcuts = ({
   shapeToPlace,
   lineInProgress,
   rectangleInProgress,
+  arrowInProgress,
   circleInProgress,
   shapes,
   handleDeleteSelected,
@@ -42,6 +45,7 @@ export const useKeyboardShortcuts = ({
   setViewport,
   setLineInProgress,
   setRectangleInProgress,
+  setArrowInProgress,
   setCircleInProgress,
   setShapeToPlace,
   setSelectedShapeId,
@@ -108,6 +112,10 @@ export const useKeyboardShortcuts = ({
           deleteShape(rectangleInProgress.shapeId);
           setRectangleInProgress(null);
           setShapeToPlace(null);
+        } else if (arrowInProgress) {
+          deleteShape(arrowInProgress.shapeId);
+          setArrowInProgress(null);
+          setShapeToPlace(null);
         } else if (circleInProgress) {
           deleteShape(circleInProgress.shapeId);
           setCircleInProgress(null);
@@ -156,6 +164,7 @@ export const useKeyboardShortcuts = ({
     shapeToPlace,
     lineInProgress,
     rectangleInProgress,
+    arrowInProgress,
     circleInProgress,
     handleDeleteSelected,
     handleUndo,
@@ -166,6 +175,7 @@ export const useKeyboardShortcuts = ({
     setViewport,
     setLineInProgress,
     setRectangleInProgress,
+    setArrowInProgress,
     setCircleInProgress,
     setShapeToPlace,
     setSelectedShapeId,

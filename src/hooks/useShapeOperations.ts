@@ -14,6 +14,8 @@ interface UseShapeOperationsProps {
   setLineInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
   rectangleInProgress: { shapeId: string; startX: number; startY: number } | null;
   setRectangleInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
+  arrowInProgress: { shapeId: string; startX: number; startY: number } | null;
+  setArrowInProgress: (value: { shapeId: string; startX: number; startY: number } | null) => void;
   circleInProgress: { shapeId: string; centerX: number; centerY: number } | null;
   setCircleInProgress: (value: { shapeId: string; centerX: number; centerY: number } | null) => void;
   setShapeToPlace: (type: ShapeType | null) => void;
@@ -38,6 +40,8 @@ export const useShapeOperations = ({
   setLineInProgress,
   rectangleInProgress,
   setRectangleInProgress,
+  arrowInProgress,
+  setArrowInProgress,
   circleInProgress,
   setCircleInProgress,
   setShapeToPlace,
@@ -125,6 +129,41 @@ export const useShapeOperations = ({
       }
     }
 
+    // Special handling for arrow placement
+    if (shapeToPlace === 'arrow') {
+      if (!arrowInProgress) {
+        const shape: Shape = {
+          id: uuidv4(),
+          type: 'arrow',
+          x,
+          y,
+          fill: '#000000',
+          width: 1,
+          height: 40,
+          stroke: '#000000',
+          strokeWidth: 2,
+          zIndex: 0,
+          createdBy: user.uid,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        addShape(shape);
+        setArrowInProgress({ shapeId: shape.id, startX: x, startY: y });
+        return;
+      } else {
+        setArrowInProgress(null);
+        setShapeToPlace(null);
+        setSelectedShapeId(arrowInProgress.shapeId);
+        setSelectedShapeIds([arrowInProgress.shapeId]);
+        
+        setTimeout(() => {
+          addToHistory(shapes);
+        }, 100);
+        return;
+      }
+    }
+
     // Special handling for circle placement
     if (shapeToPlace === 'circle') {
       if (!circleInProgress) {
@@ -203,7 +242,7 @@ export const useShapeOperations = ({
     setTimeout(() => {
       addToHistory([...shapes, shape]);
     }, 100);
-  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress, circleInProgress, shapes, addToHistory, setLineInProgress, setRectangleInProgress, setCircleInProgress, setShapeToPlace, setSelectedShapeId, setSelectedShapeIds, setCircleJustFinalized, updateShape]);
+  }, [user, shapeToPlace, addShape, lineInProgress, rectangleInProgress, arrowInProgress, circleInProgress, shapes, addToHistory, setLineInProgress, setRectangleInProgress, setArrowInProgress, setCircleInProgress, setShapeToPlace, setSelectedShapeId, setSelectedShapeIds, setCircleJustFinalized, updateShape]);
 
   const handleDeleteSelected = useCallback(() => {
     if (selectedShapeIds.length > 0) {
@@ -293,6 +332,10 @@ export const useShapeOperations = ({
       deleteShape(rectangleInProgress.shapeId);
       setRectangleInProgress(null);
     }
+    if (arrowInProgress) {
+      deleteShape(arrowInProgress.shapeId);
+      setArrowInProgress(null);
+    }
     if (circleInProgress) {
       deleteShape(circleInProgress.shapeId);
       setCircleInProgress(null);
@@ -303,7 +346,7 @@ export const useShapeOperations = ({
     setSelectedShapeId(null);
     setSelectedShapeIds([]);
     setIsSelectMode(false);
-  }, [user, lineInProgress, rectangleInProgress, circleInProgress, deleteShape, setLineInProgress, setRectangleInProgress, setCircleInProgress, setShapeToPlace, setSelectedShapeId, setSelectedShapeIds, setIsSelectMode]);
+  }, [user, lineInProgress, rectangleInProgress, arrowInProgress, circleInProgress, deleteShape, setLineInProgress, setRectangleInProgress, setArrowInProgress, setCircleInProgress, setShapeToPlace, setSelectedShapeId, setSelectedShapeIds, setIsSelectMode]);
 
   const handleToggleSelectMode = useCallback(() => {
     setIsSelectMode(!isSelectMode);
@@ -319,12 +362,16 @@ export const useShapeOperations = ({
         deleteShape(rectangleInProgress.shapeId);
         setRectangleInProgress(null);
       }
+      if (arrowInProgress) {
+        deleteShape(arrowInProgress.shapeId);
+        setArrowInProgress(null);
+      }
       if (circleInProgress) {
         deleteShape(circleInProgress.shapeId);
         setCircleInProgress(null);
       }
     }
-  }, [isSelectMode, lineInProgress, rectangleInProgress, circleInProgress, deleteShape, setIsSelectMode, setShapeToPlace, setLineInProgress, setRectangleInProgress, setCircleInProgress]);
+  }, [isSelectMode, lineInProgress, rectangleInProgress, arrowInProgress, circleInProgress, deleteShape, setIsSelectMode, setShapeToPlace, setLineInProgress, setRectangleInProgress, setArrowInProgress, setCircleInProgress]);
 
   const handleExitSelectMode = useCallback(() => {
     setIsSelectMode(false);

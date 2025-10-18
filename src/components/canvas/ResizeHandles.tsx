@@ -13,7 +13,7 @@ type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 type Edge = 'top' | 'bottom' | 'left' | 'right';
 
 export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, onResizingChange }) => {
-  if (shape.type !== 'rectangle' || !shape.width || !shape.height) {
+  if ((shape.type !== 'rectangle' && shape.type !== 'arrow') || !shape.width || !shape.height) {
     return null;
   }
 
@@ -184,8 +184,22 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
       updatedAt: Date.now(),
     }, false);
 
-    // Anchor positions are automatically updated by React re-render
-    // No need to manually reposition since we're in the Group's local coordinate system
+    // Reset the handle position to the edge of the new dimensions
+    // This keeps the handle on the bounding box as the shape resizes
+    switch (edge) {
+      case 'top':
+        node.position({ x: 0, y: -newHeight / 2 });
+        break;
+      case 'bottom':
+        node.position({ x: 0, y: newHeight / 2 });
+        break;
+      case 'left':
+        node.position({ x: -newWidth / 2, y: 0 });
+        break;
+      case 'right':
+        node.position({ x: newWidth / 2, y: 0 });
+        break;
+    }
   }, [shape, calculateNewDimensionsEdge, onUpdate]);
 
   const handleEdgeDragEnd = useCallback((edge: Edge, e: Konva.KonvaEventObject<DragEvent>) => {

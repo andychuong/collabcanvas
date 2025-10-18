@@ -20,7 +20,7 @@ export const useTransformHandlers = ({
     if (!id) return;
 
     const shape = shapes.find(s => s.id === id);
-    if (!shape || shape.type !== 'rectangle') return;
+    if (!shape || (shape.type !== 'rectangle' && shape.type !== 'arrow')) return;
 
     const currentRotation = shape.rotation || 0;
     const updatedShape: Shape = {
@@ -37,7 +37,7 @@ export const useTransformHandlers = ({
     if (!id) return;
 
     const shape = shapes.find(s => s.id === id);
-    if (!shape || shape.type !== 'rectangle') return;
+    if (!shape || (shape.type !== 'rectangle' && shape.type !== 'arrow')) return;
 
     const currentRotation = shape.rotation || 0;
     const updatedShape: Shape = {
