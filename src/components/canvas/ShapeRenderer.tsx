@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Layer, Rect, Circle, Text as KonvaText, Line } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from '../../types';
@@ -60,53 +60,134 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
           const darkerBorderColor = isSelected ? darkenColor(strokeColor, 0.4) : undefined;
           
           return (
-            <Rect
-              key={shape.id}
-              id={shape.id}
-              x={shape.x}
-              y={shape.y}
-              width={width}
-              height={height}
-              offsetX={width / 2}
-              offsetY={height / 2}
-              fill={shape.fill}
-              rotation={shape.rotation || 0}
-              draggable={isSelected}
-              onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={(e) => onShapeDragStart(shape.id, e)}
-              onDragMove={(e) => onShapeDragMove(shape, e)}
-              onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={strokeColor}
-              strokeWidth={shape.strokeWidth || 0}
-              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
-              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
-              shadowOpacity={otherUserSelection ? 0.8 : undefined}
-            />
+            <Fragment key={shape.id}>
+              {/* Outer glow for other users' selections */}
+              {otherUserSelection && (
+                <>
+                  {/* Glow layer */}
+                  <Rect
+                    x={shape.x}
+                    y={shape.y}
+                    width={width}
+                    height={height}
+                    offsetX={width / 2}
+                    offsetY={height / 2}
+                    rotation={shape.rotation || 0}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={8}
+                    opacity={0.4}
+                    listening={false}
+                    shadowBlur={25}
+                    shadowColor={otherUserSelection.color}
+                    shadowOpacity={1}
+                  />
+                  {/* Solid outline */}
+                  <Rect
+                    x={shape.x}
+                    y={shape.y}
+                    width={width}
+                    height={height}
+                    offsetX={width / 2}
+                    offsetY={height / 2}
+                    rotation={shape.rotation || 0}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={2}
+                    opacity={0.9}
+                    listening={false}
+                  />
+                </>
+              )}
+              <Rect
+                id={shape.id}
+                x={shape.x}
+                y={shape.y}
+                width={width}
+                height={height}
+                offsetX={width / 2}
+                offsetY={height / 2}
+                fill={shape.fill}
+                rotation={shape.rotation || 0}
+                draggable={isSelected}
+                onClick={(e) => onShapeClick(shape.id, e)}
+                onDragStart={(e) => onShapeDragStart(shape.id, e)}
+                onDragMove={(e) => onShapeDragMove(shape, e)}
+                onDragEnd={(e) => onShapeDragEnd(shape, e)}
+                stroke={strokeColor}
+                strokeWidth={shape.strokeWidth || 0}
+                shadowBlur={isSelected ? 10 : 0}
+                shadowColor={isSelected ? darkerBorderColor : undefined}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </Fragment>
           );
         }
 
         if (shape.type === 'circle') {
           const hasStroke = shape.stroke && shape.strokeWidth;
           const darkerBorderColor = isSelected && (hasStroke ? shape.stroke : shape.fill) ? darkenColor(hasStroke ? shape.stroke! : shape.fill, 0.4) : undefined;
+          
           return (
-            <Circle
-              key={shape.id}
-              id={shape.id}
-              x={shape.x}
-              y={shape.y}
-              radius={shape.radius || 50}
-              fill={shape.fill}
-              draggable={isSelected}
-              onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={(e) => onShapeDragStart(shape.id, e)}
-              onDragMove={(e) => onShapeDragMove(shape, e)}
-              onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              stroke={hasStroke ? shape.stroke : darkerBorderColor}
-              strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
-              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
-              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
-              shadowOpacity={otherUserSelection ? 0.8 : undefined}
-            />
+            <Fragment key={shape.id}>
+              {/* Outer glow for other users' selections - VERY VISIBLE */}
+              {otherUserSelection && (
+                <>
+                  {/* Thick glow layer */}
+                  <Circle
+                    x={shape.x}
+                    y={shape.y}
+                    radius={(shape.radius || 50) + 5}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={15}
+                    opacity={0.5}
+                    listening={false}
+                    shadowBlur={30}
+                    shadowColor={otherUserSelection.color}
+                    shadowOpacity={1}
+                  />
+                  {/* Solid bright outline */}
+                  <Circle
+                    x={shape.x}
+                    y={shape.y}
+                    radius={(shape.radius || 50) + 2}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={5}
+                    opacity={1}
+                    listening={false}
+                  />
+                </>
+              )}
+              <Circle
+                id={shape.id}
+                x={shape.x}
+                y={shape.y}
+                radius={shape.radius || 50}
+                fill={shape.fill}
+                draggable={isSelected}
+                onClick={(e) => onShapeClick(shape.id, e)}
+                onDragStart={(e) => onShapeDragStart(shape.id, e)}
+                onDragMove={(e) => onShapeDragMove(shape, e)}
+                onDragEnd={(e) => onShapeDragEnd(shape, e)}
+                stroke={hasStroke ? shape.stroke : darkerBorderColor}
+                strokeWidth={hasStroke ? shape.strokeWidth : (isSelected ? 1.5 : 0)}
+                shadowBlur={isSelected ? 10 : 0}
+                shadowColor={isSelected ? darkerBorderColor : undefined}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </Fragment>
           );
         }
 
@@ -127,58 +208,145 @@ export const ShapeRenderer: React.FC<ShapeRendererProps> = React.memo(({
           const estimatedWidth = text.length * charWidth;
           
           return (
-            <KonvaText
-              key={shape.id}
-              id={shape.id}
-              x={shape.x}
-              y={shape.y}
-              text={text}
-              fontSize={fontSize}
-              fontFamily={shape.fontFamily || 'Arial'}
-              fontStyle={konvaFontStyle}
-              textDecoration={shape.textDecoration || ''}
-              fill={shape.fill}
-              offsetX={estimatedWidth / 2}
-              offsetY={fontSize / 2}
-              draggable={isSelected && !isEditing}
-              visible={!isEditing}
-              onClick={(e) => !isEditing && onShapeClick(shape.id, e)}
-              onDblClick={(e) => {
-                e.cancelBubble = true;
-                onTextDblClick(shape, e);
-              }}
-              onDragStart={(e) => onShapeDragStart(shape.id, e)}
-              onDragMove={(e) => onShapeDragMove(shape, e)}
-              onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
-              shadowColor={isSelected ? darkerBorderColor : (otherUserSelection ? otherUserSelection.color : undefined)}
-              shadowOpacity={otherUserSelection ? 0.8 : undefined}
-            />
+            <Fragment key={shape.id}>
+              {/* Outer glow for other users' selections */}
+              {otherUserSelection && (
+                <>
+                  {/* Glow layer */}
+                  <KonvaText
+                    x={shape.x}
+                    y={shape.y}
+                    text={text}
+                    fontSize={fontSize}
+                    fontFamily={shape.fontFamily || 'Arial'}
+                    fontStyle={konvaFontStyle}
+                    textDecoration={shape.textDecoration || ''}
+                    fill="transparent"
+                    stroke={otherUserSelection.color}
+                    strokeWidth={6}
+                    offsetX={estimatedWidth / 2}
+                    offsetY={fontSize / 2}
+                    opacity={0.4}
+                    listening={false}
+                    shadowBlur={25}
+                    shadowColor={otherUserSelection.color}
+                    shadowOpacity={1}
+                  />
+                  {/* Solid outline */}
+                  <KonvaText
+                    x={shape.x}
+                    y={shape.y}
+                    text={text}
+                    fontSize={fontSize}
+                    fontFamily={shape.fontFamily || 'Arial'}
+                    fontStyle={konvaFontStyle}
+                    textDecoration={shape.textDecoration || ''}
+                    fill="transparent"
+                    stroke={otherUserSelection.color}
+                    strokeWidth={2}
+                    offsetX={estimatedWidth / 2}
+                    offsetY={fontSize / 2}
+                    opacity={0.95}
+                    listening={false}
+                  />
+                </>
+              )}
+              <KonvaText
+                id={shape.id}
+                x={shape.x}
+                y={shape.y}
+                text={text}
+                fontSize={fontSize}
+                fontFamily={shape.fontFamily || 'Arial'}
+                fontStyle={konvaFontStyle}
+                textDecoration={shape.textDecoration || ''}
+                fill={shape.fill}
+                offsetX={estimatedWidth / 2}
+                offsetY={fontSize / 2}
+                draggable={isSelected && !isEditing}
+                visible={!isEditing}
+                onClick={(e) => !isEditing && onShapeClick(shape.id, e)}
+                onDblClick={(e) => {
+                  e.cancelBubble = true;
+                  onTextDblClick(shape, e);
+                }}
+                onDragStart={(e) => onShapeDragStart(shape.id, e)}
+                onDragMove={(e) => onShapeDragMove(shape, e)}
+                onDragEnd={(e) => onShapeDragEnd(shape, e)}
+                shadowBlur={isSelected ? 10 : 0}
+                shadowColor={isSelected ? darkerBorderColor : undefined}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = isEditing ? 'text' : 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </Fragment>
           );
         }
 
         if (shape.type === 'line') {
           const lineColor = shape.stroke || '#000000';
           const darkerShadowColor = isSelected ? darkenColor(lineColor, 0.3) : undefined;
+          
           return (
-            <Line
-              key={shape.id}
-              id={shape.id}
-              x={shape.x}
-              y={shape.y}
-              points={shape.points || [0, 0, 100, 100]}
-              stroke={lineColor}
-              strokeWidth={isSelected ? (shape.strokeWidth || 2) + 1 : (shape.strokeWidth || 2)}
-              draggable={isSelected}
-              onClick={(e) => onShapeClick(shape.id, e)}
-              onDragStart={(e) => onShapeDragStart(shape.id, e)}
-              onDragMove={(e) => onShapeDragMove(shape, e)}
-              onDragEnd={(e) => onShapeDragEnd(shape, e)}
-              shadowBlur={isSelected ? 10 : (otherUserSelection ? 15 : 0)}
-              shadowColor={isSelected ? darkerShadowColor : (otherUserSelection ? otherUserSelection.color : undefined)}
-              shadowOpacity={otherUserSelection ? 0.8 : undefined}
-              hitStrokeWidth={isSelected ? 15 : 10}
-            />
+            <Fragment key={shape.id}>
+              {/* Outer glow for other users' selections - VERY VISIBLE */}
+              {otherUserSelection && (
+                <>
+                  {/* Thick glow layer */}
+                  <Line
+                    x={shape.x}
+                    y={shape.y}
+                    points={shape.points || [0, 0, 100, 100]}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={(shape.strokeWidth || 2) + 20}
+                    opacity={0.5}
+                    listening={false}
+                    shadowBlur={35}
+                    shadowColor={otherUserSelection.color}
+                    shadowOpacity={1}
+                  />
+                  {/* Solid bright outline */}
+                  <Line
+                    x={shape.x}
+                    y={shape.y}
+                    points={shape.points || [0, 0, 100, 100]}
+                    stroke={otherUserSelection.color}
+                    strokeWidth={(shape.strokeWidth || 2) + 8}
+                    opacity={1}
+                    listening={false}
+                  />
+                </>
+              )}
+              <Line
+                id={shape.id}
+                x={shape.x}
+                y={shape.y}
+                points={shape.points || [0, 0, 100, 100]}
+                stroke={lineColor}
+                strokeWidth={isSelected ? (shape.strokeWidth || 2) + 1 : (shape.strokeWidth || 2)}
+                draggable={isSelected}
+                onClick={(e) => onShapeClick(shape.id, e)}
+                onDragStart={(e) => onShapeDragStart(shape.id, e)}
+                onDragMove={(e) => onShapeDragMove(shape, e)}
+                onDragEnd={(e) => onShapeDragEnd(shape, e)}
+                shadowBlur={isSelected ? 10 : 0}
+                shadowColor={isSelected ? darkerShadowColor : undefined}
+                hitStrokeWidth={isSelected ? 15 : 10}
+                onMouseEnter={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const stage = e.target.getStage();
+                  if (stage) stage.container().style.cursor = 'default';
+                }}
+              />
+            </Fragment>
           );
         }
 

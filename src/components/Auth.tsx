@@ -88,6 +88,9 @@ export const Auth: React.FC<AuthProps> = ({ onRegistrationStart, onRegistrationC
         await updateProfile(user, {
           displayName: displayName.trim()
         });
+        
+        // Reload the user to ensure displayName is synced
+        await user.reload();
 
         // IMPORTANT: Create group document FIRST to avoid permission issues
         // Try to create the group - if it already exists, we'll join it instead

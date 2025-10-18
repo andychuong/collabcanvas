@@ -77,25 +77,62 @@ export const useShapes = (groupId: string | null) => {
     }
   }, [groupId]);
 
-  // Batch update multiple shapes at once for better performance
+  // Batch update multiple shapes at once using Firebase WriteBatch for atomic updates
   const batchUpdateShapes = useCallback(async (shapes: Shape[]) => {
     if (!groupId) return;
     
     try {
-      // Execute all updates in parallel (Firebase SDK handles this efficiently)
-      const updatePromises = shapes.map(shape => {
+      const { writeBatch } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+      
+      // Use the same timestamp for all shapes in the batch for perfect synchronization
+      const timestamp = Date.now();
+      
+      shapes.forEach(shape => {
         const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shape.id);
-        return setDoc(shapeRef, {
+        batch.set(shapeRef, {
           ...shape,
-          updatedAt: Date.now(),
+          updatedAt: timestamp, // Same timestamp for all shapes
         }, { merge: true });
       });
       
-      await Promise.all(updatePromises);
+      // Commit all updates atomically - they all succeed or all fail together
+      await batch.commit();
     } catch (error) {
       console.error('Error batch updating shapes:', error);
     }
   }, [groupId]);
+
+  // Throttled batch update for smooth multi-shape dragging
+  const throttledBatchUpdate = useCallback(
+    (() => {
+      const pendingShapes = new Map<string, Shape>();
+      let rafId: number | null = null;
+      
+      const flush = () => {
+        if (pendingShapes.size > 0) {
+          const shapesToUpdate = Array.from(pendingShapes.values());
+          batchUpdateShapes(shapesToUpdate);
+          pendingShapes.clear();
+        }
+        rafId = null;
+      };
+
+      return (shapes: Shape[]) => {
+        // Add/update shapes in pending batch
+        shapes.forEach(shape => {
+          pendingShapes.set(shape.id, shape);
+        });
+
+        // Use requestAnimationFrame to batch updates at display refresh rate
+        // This ensures smooth updates without overwhelming Firebase
+        if (!rafId) {
+          rafId = requestAnimationFrame(flush);
+        }
+      };
+    })(),
+    [batchUpdateShapes]
+  );
 
   // Throttled version for drag operations with auto-flush
   const throttledUpdateShape = useCallback(
@@ -169,6 +206,7 @@ export const useShapes = (groupId: string | null) => {
     addShape,
     updateShape,
     batchUpdateShapes,
+    throttledBatchUpdate,
     throttledUpdateShape,
     deleteShape,
   };

@@ -42,7 +42,7 @@ export const useCursors = (userId: string | null, userName: string, userColor: s
 
   // Update cursor position (throttled)
   const updateCursor = useCallback((x: number, y: number) => {
-    if (!userId || !groupId) return;
+    if (!userId || !groupId || !userName) return;
 
     const cursorRef = ref(rtdb, `groups/${groupId}/cursors/${userId}`);
     set(cursorRef, {
@@ -59,7 +59,7 @@ export const useCursors = (userId: string | null, userName: string, userColor: s
   const throttledUpdateCursor = useCallback(
     (() => {
       let lastUpdate = 0;
-      const THROTTLE_MS = 75; // 75ms = ~13 updates per second
+      const THROTTLE_MS = 50; // 50ms = ~20 updates per second for smoother tracking
 
       return (x: number, y: number) => {
         const now = Date.now();

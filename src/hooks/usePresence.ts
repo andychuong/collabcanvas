@@ -38,7 +38,7 @@ export const usePresence = (
   }, [userId, userName, userEmail, userColor, groupId]);
 
   useEffect(() => {
-    if (!userId || !groupId) return;
+    if (!userId || !groupId || !userName) return;
 
     // Set user as online in Realtime Database
     const userStatusRef = ref(rtdb, `groups/${groupId}/presence/${userId}`);
@@ -148,7 +148,7 @@ export const usePresence = (
         });
       }
     };
-  }, [userId, groupId]);
+  }, [userId, groupId, userName]);
 
   // Listen to presence changes - only when user is authenticated
   useEffect(() => {

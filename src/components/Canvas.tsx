@@ -11,12 +11,14 @@ import { useCanvasViewport } from '../hooks/useCanvasViewport';
 import { useCanvasInteraction } from '../hooks/useCanvasInteraction';
 import { useTextEditing } from '../hooks/useTextEditing';
 import { useEdgePanning } from '../hooks/useEdgePanning';
+import { useInterpolatedShapes } from '../hooks/useInterpolatedShapes';
 import { clampViewportPosition } from '../utils/canvasHelpers';
 
 interface CanvasProps {
   shapes: Shape[];
   cursors: CursorType[];
   onShapeUpdate: (shape: Shape, immediate?: boolean) => void;
+  onBatchUpdate?: (shapes: Shape[]) => void;
   onShapeSelect: (shapeId: string | null) => void;
   onMultiSelect?: (shapeIds: string[]) => void;
   selectedShapeId: string | null;
@@ -37,6 +39,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   shapes,
   cursors,
   onShapeUpdate,
+  onBatchUpdate,
   onShapeSelect,
   onMultiSelect,
   selectedShapeId,
@@ -104,14 +107,19 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Handle batch update for group dragging - use immediate updates for undo/redo
   const handleBatchUpdate = useCallback((updatedShapes: Shape[]) => {
-    // Update all shapes without triggering individual history entries
-    updatedShapes.forEach(shape => onShapeUpdate(shape, false));
-    // Then trigger one history entry for the batch with immediate=true on the last shape
-    if (updatedShapes.length > 0) {
-      const lastShape = updatedShapes[updatedShapes.length - 1];
-      onShapeUpdate(lastShape, true);
+    // Use the batch update function if available for synchronized updates
+    if (onBatchUpdate) {
+      onBatchUpdate(updatedShapes);
+    } else {
+      // Fallback to individual updates
+      updatedShapes.forEach(shape => onShapeUpdate(shape, false));
+      // Then trigger one history entry for the batch with immediate=true on the last shape
+      if (updatedShapes.length > 0) {
+        const lastShape = updatedShapes[updatedShapes.length - 1];
+        onShapeUpdate(lastShape, true);
+      }
     }
-  }, [onShapeUpdate]);
+  }, [onBatchUpdate, onShapeUpdate]);
 
   const {
     isDragging,
@@ -156,6 +164,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     edgeSize: 50,
     panSpeed: 8,
   });
+
+  // Use interpolated shapes for smooth remote updates (prevents jagged movement)
+  const interpolatedShapes = useInterpolatedShapes(shapes, isDragging, selectedShapeIds);
 
   // Handle window resize - calculate based on available space
   useEffect(() => {
@@ -531,7 +542,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onMouseUp={handleStageMouseUp}
           onMouseLeave={handleMouseLeave}
           style={{ 
-            cursor: shapeToPlace ? 'crosshair' : isPanning ? 'grabbing' : effectiveSelectMode ? 'pointer' : 'grab' 
+            cursor: shapeToPlace ? 'crosshair' : isPanning ? 'grabbing' : isDragging ? 'grabbing' : effectiveSelectMode ? 'pointer' : 'default' 
           }}
         >
           {/* Background layer with grid */}
@@ -539,7 +550,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
           {/* Shapes layer */}
           <ShapeRenderer
-            shapes={[...shapes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))}
+            shapes={[...interpolatedShapes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))}
             selectedShapeId={selectedShapeId}
             selectedShapeIds={selectedShapeIds}
             editingTextId={editingTextId}

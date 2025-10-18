@@ -144,17 +144,22 @@ export const useCanvasInteraction = ({
       
       stage.batchDraw();
       
-      // Update state for all selected shapes so handles/anchors move smoothly
-      shapes
+      // Batch update all selected shapes together for smooth synchronized movement
+      const updatedShapes = shapes
         .filter(s => selectedShapeIds.includes(s.id))
-        .forEach(s => {
-          onShapeUpdate({
-            ...s,
-            x: dragStartPositions[s.id].x + deltaX,
-            y: dragStartPositions[s.id].y + deltaY,
-            updatedAt: Date.now(),
-          }, false);
-        });
+        .map(s => ({
+          ...s,
+          x: dragStartPositions[s.id].x + deltaX,
+          y: dragStartPositions[s.id].y + deltaY,
+          updatedAt: Date.now(),
+        }));
+      
+      // Use batch update if available, otherwise fall back to individual updates
+      if (onBatchUpdate) {
+        onBatchUpdate(updatedShapes);
+      } else {
+        updatedShapes.forEach(s => onShapeUpdate(s, false));
+      }
     } else {
       // Single shape drag - update state during drag for smooth handle movement
       // Use immediate=false for throttled updates
