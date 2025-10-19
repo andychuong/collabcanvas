@@ -6,13 +6,13 @@ import { getDatabase, ref, set, get, remove } from 'https://www.gstatic.com/fire
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "__VITE_FIREBASE_API_KEY__",
-  authDomain: "__VITE_FIREBASE_AUTH_DOMAIN__",
-  projectId: "__VITE_FIREBASE_PROJECT_ID__",
-  storageBucket: "__VITE_FIREBASE_STORAGE_BUCKET__",
-  messagingSenderId: "__VITE_FIREBASE_MESSAGING_SENDER_ID__",
-  appId: "__VITE_FIREBASE_APP_ID__",
-  databaseURL: "__VITE_FIREBASE_DATABASE_URL__"
+  apiKey: "VITE_FIREBASE_API_KEY",
+  authDomain: "VITE_FIREBASE_AUTH_DOMAIN",
+  projectId: "VITE_FIREBASE_PROJECT_ID",
+  storageBucket: "VITE_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "VITE_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "VITE_FIREBASE_APP_ID",
+  databaseURL: "VITE_FIREBASE_DATABASE_URL"
 };
 
 // Initialize Firebase

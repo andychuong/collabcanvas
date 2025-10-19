@@ -2,7 +2,7 @@
 
 /**
  * Build script for healthcheck files
- * Replaces placeholders with environment variables
+ * Replaces placeholder strings with actual environment variables
  */
 
 const fs = require('fs');
@@ -23,26 +23,26 @@ if (!fs.existsSync(healthcheckDir)) {
   fs.mkdirSync(healthcheckDir, { recursive: true });
 }
 
-// Process healthcheck.js template
-const jsTemplatePath = path.join(__dirname, '../public/healthcheck.template.js');
+// Read healthcheck.js from public/
+const jsSourcePath = path.join(__dirname, '../public/healthcheck.js');
 const jsOutputPath = path.join(__dirname, '../dist/healthcheck.js');
 const jsOutputPath2 = path.join(__dirname, '../dist/healthcheck/healthcheck.js');
 
-let jsTemplate = fs.readFileSync(jsTemplatePath, 'utf8');
+let jsContent = fs.readFileSync(jsSourcePath, 'utf8');
 
-// Replace placeholders with environment variables
-jsTemplate = jsTemplate
-  .replace('__VITE_FIREBASE_API_KEY__', process.env.VITE_FIREBASE_API_KEY || '')
-  .replace('__VITE_FIREBASE_AUTH_DOMAIN__', process.env.VITE_FIREBASE_AUTH_DOMAIN || '')
-  .replace('__VITE_FIREBASE_PROJECT_ID__', process.env.VITE_FIREBASE_PROJECT_ID || '')
-  .replace('__VITE_FIREBASE_STORAGE_BUCKET__', process.env.VITE_FIREBASE_STORAGE_BUCKET || '')
-  .replace('__VITE_FIREBASE_MESSAGING_SENDER_ID__', process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '')
-  .replace('__VITE_FIREBASE_APP_ID__', process.env.VITE_FIREBASE_APP_ID || '')
-  .replace('__VITE_FIREBASE_DATABASE_URL__', process.env.VITE_FIREBASE_DATABASE_URL || '');
+// Replace placeholder strings with environment variables
+jsContent = jsContent
+  .replace(/"VITE_FIREBASE_API_KEY"/g, `"${process.env.VITE_FIREBASE_API_KEY || ''}"`)
+  .replace(/"VITE_FIREBASE_AUTH_DOMAIN"/g, `"${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}"`)
+  .replace(/"VITE_FIREBASE_PROJECT_ID"/g, `"${process.env.VITE_FIREBASE_PROJECT_ID || ''}"`)
+  .replace(/"VITE_FIREBASE_STORAGE_BUCKET"/g, `"${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}"`)
+  .replace(/"VITE_FIREBASE_MESSAGING_SENDER_ID"/g, `"${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}"`)
+  .replace(/"VITE_FIREBASE_APP_ID"/g, `"${process.env.VITE_FIREBASE_APP_ID || ''}"`)
+  .replace(/"VITE_FIREBASE_DATABASE_URL"/g, `"${process.env.VITE_FIREBASE_DATABASE_URL || ''}"`);
 
 // Write JS output files
-fs.writeFileSync(jsOutputPath, jsTemplate);
-fs.writeFileSync(jsOutputPath2, jsTemplate);
+fs.writeFileSync(jsOutputPath, jsContent);
+fs.writeFileSync(jsOutputPath2, jsContent);
 
 // Copy HTML and CSS files
 const htmlPath = path.join(__dirname, '../public/healthcheck.html');
