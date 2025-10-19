@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && npm run copy-healthcheck",
-    "copy-healthcheck": "mkdir -p dist/healthcheck && cp public/healthcheck.html dist/healthcheck.html && cp public/healthcheck.html dist/healthcheck/index.html",
+    "build": "tsc && vite build && npm run build-healthcheck",
+    "build-healthcheck": "node scripts/build-healthcheck.cjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "check-db": "node scripts/checkDatabaseState.js",

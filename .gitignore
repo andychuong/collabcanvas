@@ -28,6 +28,9 @@ dist-ssr
 .env.local
 .env.production
 
+# Generated healthcheck files (built from templates)
+public/healthcheck.js
+
 # Firebase
 .firebase
 firebase-debug.log
