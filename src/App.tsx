@@ -327,28 +327,40 @@ function App() {
       const currentShapeIds = new Set(shapes.map(s => s.id));
       const previousShapeIds = new Set(previousShapes.map(s => s.id));
       
+      // Collect operations
+      const deleteOps: Promise<void>[] = [];
+      const updateOps: Shape[] = [];
+      
       // Delete shapes that exist now but not in history
       for (const shape of shapes) {
         if (!previousShapeIds.has(shape.id)) {
-          deleteShape(shape.id);
+          deleteOps.push(deleteShape(shape.id));
         }
       }
       
       // Add or update shapes from history
       for (const shape of previousShapes) {
-        if (currentShapeIds.has(shape.id)) {
-          updateShape(shape);
-        } else {
-          addShapeOptimistic(shape);
-        }
+        updateOps.push(shape);
+      }
+      
+      // Execute all operations
+      await Promise.all(deleteOps);
+      
+      // Use batch update for better performance
+      if (batchUpdateShapes) {
+        await batchUpdateShapes(updateOps);
+      } else {
+        await Promise.all(updateOps.map(shape => 
+          currentShapeIds.has(shape.id) ? updateShape(shape) : addShapeOptimistic(shape)
+        ));
       }
       
       // Wait for Firestore sync before continuing
       setTimeout(() => {
         finishRestoring();
-      }, 500);
+      }, 300);
     }
-  }, [undo, shapes, user, deleteShape, updateShape, addShapeOptimistic, finishRestoring]);
+  }, [undo, shapes, user, deleteShape, updateShape, addShapeOptimistic, batchUpdateShapes, finishRestoring]);
 
   const handleRedo = useCallback(async () => {
     const nextShapes = redo();
@@ -357,28 +369,40 @@ function App() {
       const currentShapeIds = new Set(shapes.map(s => s.id));
       const nextShapeIds = new Set(nextShapes.map(s => s.id));
       
+      // Collect operations
+      const deleteOps: Promise<void>[] = [];
+      const updateOps: Shape[] = [];
+      
       // Delete shapes that exist now but not in future state
       for (const shape of shapes) {
         if (!nextShapeIds.has(shape.id)) {
-          deleteShape(shape.id);
+          deleteOps.push(deleteShape(shape.id));
         }
       }
       
       // Add or update shapes from future state
       for (const shape of nextShapes) {
-        if (currentShapeIds.has(shape.id)) {
-          updateShape(shape);
-        } else {
-          addShapeOptimistic(shape);
-        }
+        updateOps.push(shape);
+      }
+      
+      // Execute all operations
+      await Promise.all(deleteOps);
+      
+      // Use batch update for better performance
+      if (batchUpdateShapes) {
+        await batchUpdateShapes(updateOps);
+      } else {
+        await Promise.all(updateOps.map(shape => 
+          currentShapeIds.has(shape.id) ? updateShape(shape) : addShapeOptimistic(shape)
+        ));
       }
       
       // Clear the restoring flag after a delay to allow Firestore to sync
       setTimeout(() => {
         finishRestoring();
-      }, 500);
+      }, 300);
     }
-  }, [redo, shapes, user, deleteShape, updateShape, addShapeOptimistic, finishRestoring]);
+  }, [redo, shapes, user, deleteShape, updateShape, addShapeOptimistic, batchUpdateShapes, finishRestoring]);
 
   const handleLogout = useCallback(async () => {
     try {
