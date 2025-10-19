@@ -70,3 +70,14 @@ export interface ConnectionState {
   lastDisconnect?: number;
 }
 
+export interface ShapeHistoryEntry {
+  id: string; // Unique ID for the history entry
+  shapeId: string; // ID of the shape this history entry belongs to
+  snapshot: Shape; // Complete snapshot of the shape at this point in time
+  timestamp: number; // When this version was created
+  userId: string; // Who made this change
+  userName?: string; // User's display name
+  action: 'created' | 'updated' | 'transformed' | 'styled'; // Type of change
+  description?: string; // Optional description of the change
+}
+

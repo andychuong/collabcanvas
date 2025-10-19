@@ -6,8 +6,8 @@ import { hexToRgba } from '../utils/colors';
 interface UseShapeOperationsProps {
   user: { uid: string } | null;
   shapes: Shape[];
-  addShape: (shape: Shape) => void;
-  updateShape: (shape: Shape) => void;
+  addShape: (shape: Shape, skipHistory?: boolean) => void;
+  updateShape: (shape: Shape, trackHistory?: boolean) => void;
   deleteShape: (shapeId: string) => void;
   addToHistory: (shapes: Shape[]) => void;
   lineInProgress: { shapeId: string; startX: number; startY: number } | null;
@@ -77,11 +77,18 @@ export const useShapeOperations = ({
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        // Skip history on initial creation - will save when line is finalized
+        addShape(shape, true);
         setLineInProgress({ shapeId: shape.id, startX: x, startY: y });
         return;
       } else {
         // Second click: finalize the line
+        const finalShape = shapes.find(s => s.id === lineInProgress.shapeId);
+        if (finalShape) {
+          // Save creation history with final dimensions
+          updateShape(finalShape, true);
+        }
+        
         setLineInProgress(null);
         setShapeToPlace(null);
         setSelectedShapeId(lineInProgress.shapeId);
@@ -113,10 +120,17 @@ export const useShapeOperations = ({
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        // Skip history on initial creation - will save when rectangle is finalized
+        addShape(shape, true);
         setRectangleInProgress({ shapeId: shape.id, startX: x, startY: y });
         return;
       } else {
+        const finalShape = shapes.find(s => s.id === rectangleInProgress.shapeId);
+        if (finalShape) {
+          // Save creation history with final dimensions
+          updateShape(finalShape, true);
+        }
+        
         setRectangleInProgress(null);
         setShapeToPlace(null);
         setSelectedShapeId(rectangleInProgress.shapeId);
@@ -148,10 +162,17 @@ export const useShapeOperations = ({
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        // Skip history on initial creation - will save when arrow is finalized
+        addShape(shape, true);
         setArrowInProgress({ shapeId: shape.id, startX: x, startY: y });
         return;
       } else {
+        const finalShape = shapes.find(s => s.id === arrowInProgress.shapeId);
+        if (finalShape) {
+          // Save creation history with final dimensions
+          updateShape(finalShape, true);
+        }
+        
         setArrowInProgress(null);
         setShapeToPlace(null);
         setSelectedShapeId(arrowInProgress.shapeId);
@@ -182,7 +203,8 @@ export const useShapeOperations = ({
           updatedAt: Date.now(),
         };
         
-        addShape(shape);
+        // Skip history on initial creation - will save when circle is finalized
+        addShape(shape, true);
         setCircleInProgress({ shapeId: shape.id, centerX: x, centerY: y });
         return;
       } else {
@@ -199,7 +221,8 @@ export const useShapeOperations = ({
             updatedAt: Date.now(),
           };
           
-          updateShape(finalShape);
+          // Save creation history with final dimensions
+          updateShape(finalShape, true);
           setCircleJustFinalized(circleInProgress.shapeId);
         }
         

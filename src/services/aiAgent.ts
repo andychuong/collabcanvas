@@ -4,7 +4,7 @@ import { AgentExecutor, createOpenAIToolsAgent } from 'langchain/agents';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { Shape, ShapeType } from '../types';
+import { Shape, ShapeType, ShapeHistoryEntry } from '../types';
 import { hexToRgba } from '../utils/colors';
 
 interface AIAgentContext {
@@ -13,6 +13,8 @@ interface AIAgentContext {
   updateShape: (shape: Shape) => void;
   batchUpdateShapes?: (shapes: Shape[]) => void;
   deleteShape: (shapeId: string) => void;
+  getShapeHistory?: (shapeId: string) => Promise<ShapeHistoryEntry[]>;
+  restoreShapeVersion?: (entry: ShapeHistoryEntry) => Promise<void>;
   userId: string;
   canvasWidth: number;
   canvasHeight: number;
@@ -1162,6 +1164,99 @@ export class CanvasAIAgent {
       },
     });
 
+    // Tool 19: Get shape history
+    const getShapeHistoryTool = new DynamicStructuredTool({
+      name: 'get_shape_history',
+      description: 'Gets the complete history of changes made to a shape, including who made changes and when. Shows all versions from creation to current state.',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to get history for (e.g., "red circle", "text with Hello")'),
+      }),
+      func: async ({ description }) => {
+        if (!this.context.getShapeHistory) {
+          return 'History feature is not available';
+        }
+        
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const history = await this.context.getShapeHistory(shape.id);
+        
+        if (history.length === 0) {
+          return `Shape ${shape.type} has no history entries yet.`;
+        }
+        
+        let response = `Found ${history.length} version(s) of ${shape.type}:\n\n`;
+        
+        history.forEach((entry, index) => {
+          const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
+          let timeStr = '';
+          
+          if (timeAgo < 60) timeStr = `${timeAgo}s ago`;
+          else if (timeAgo < 3600) timeStr = `${Math.floor(timeAgo / 60)}m ago`;
+          else if (timeAgo < 86400) timeStr = `${Math.floor(timeAgo / 3600)}h ago`;
+          else timeStr = `${Math.floor(timeAgo / 86400)}d ago`;
+          
+          response += `${index + 1}. ${entry.action.toUpperCase()} by ${entry.userName || 'Unknown'} (${timeStr})\n`;
+          response += `   History ID: ${entry.id.substring(0, 8)}...\n`;
+          response += `   Position: (${Math.round(entry.snapshot.x)}, ${Math.round(entry.snapshot.y)})`;
+          
+          if (entry.snapshot.width) response += `, Size: ${Math.round(entry.snapshot.width)}×${Math.round(entry.snapshot.height || 0)}`;
+          if (entry.snapshot.radius) response += `, Radius: ${Math.round(entry.snapshot.radius)}`;
+          if (entry.snapshot.rotation) response += `, Rotation: ${entry.snapshot.rotation}°`;
+          if (entry.snapshot.text) response += `, Text: "${entry.snapshot.text}"`;
+          
+          response += `\n`;
+        });
+        
+        return response;
+      },
+    });
+
+    // Tool 20: Restore shape version
+    const restoreShapeVersionTool = new DynamicStructuredTool({
+      name: 'restore_shape_version',
+      description: 'Restores a shape to a previous version from its history. Use after getting shape history to see available versions.',
+      schema: z.object({
+        description: z.string().describe('Description of the shape to restore'),
+        historyId: z.string().describe('The history ID from get_shape_history (8-character ID like "a3b4c5d6")'),
+      }),
+      func: async ({ description, historyId }) => {
+        if (!this.context.getShapeHistory || !this.context.restoreShapeVersion) {
+          return 'History and restore features are not available';
+        }
+        
+        const shapes = this.findShapesByDescription(description);
+        if (shapes.length === 0) {
+          return `No shapes found matching "${description}"`;
+        }
+        
+        const shape = shapes[0];
+        const history = await this.context.getShapeHistory(shape.id);
+        
+        // Find the history entry by partial ID match
+        const entry = history.find(h => h.id.startsWith(historyId));
+        
+        if (!entry) {
+          return `No history version found with ID starting with "${historyId}". Use get_shape_history first to see available versions.`;
+        }
+        
+        await this.context.restoreShapeVersion(entry);
+        
+        const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
+        let timeStr = '';
+        
+        if (timeAgo < 60) timeStr = `${timeAgo}s ago`;
+        else if (timeAgo < 3600) timeStr = `${Math.floor(timeAgo / 60)}m ago`;
+        else if (timeAgo < 86400) timeStr = `${Math.floor(timeAgo / 3600)}h ago`;
+        else timeStr = `${Math.floor(timeAgo / 86400)}d ago`;
+        
+        return `Successfully restored ${shape.type} to version from ${timeStr} (${entry.action} by ${entry.userName || 'Unknown'})`;
+      },
+    });
+
     return [
       createCircleTool,
       createRectangleTool,
@@ -1184,6 +1279,8 @@ export class CanvasAIAgent {
       sendBackwardTool,
       alignTextToShapeTool,
       createBasicLayoutTool,
+      getShapeHistoryTool,
+      restoreShapeVersionTool,
     ];
   }
 

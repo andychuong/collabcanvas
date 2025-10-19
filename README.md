@@ -33,6 +33,8 @@ CollabCanvas uses a **group-based workspace system**:
 
 **Deployed Application:** [https://collabcanvas-andy.web.app]
 
+**Health Check:** [https://collabcanvas-andy.web.app/healthcheck]
+
 ## 📖 Quick Links
 
 - **[Architecture](./docs/architecture/ARCHITECTURE.md)** - System design and decisions
@@ -40,6 +42,7 @@ CollabCanvas uses a **group-based workspace system**:
 - **[Setup Guide](./docs/guides/SETUP.md)** - Environment setup and configuration
 - **[AI Chat Guide](./AI_CHAT_GUIDE.md)** - Use the AI assistant feature
 - **[Groups User Guide](./GROUPS_USER_GUIDE.md)** - Understanding group workspaces
+- **[Health Check](./docs/HEALTHCHECK.md)** - API monitoring and health checks
 
 ## ✨ Features
 
@@ -178,6 +181,16 @@ CollabCanvas uses a **group-based workspace system**:
   - **Step-by-Step Instructions**: Clear guidance for each feature with context
   - **Keyboard Shortcuts Reference**: Complete list with kbd formatting
   - **Copyright Information**: Included within help modal
+
+- **Health Check & Monitoring** ⭐ NEW!
+  - **Real-time API Status**: Monitor all critical services at `/healthcheck`
+  - **Service Coverage**: Firebase Auth, Firestore, Hosting, and OpenAI API
+  - **Auto-refresh**: Updates every 30 seconds automatically
+  - **Visual Status Indicators**: Color-coded badges (healthy, degraded, down)
+  - **Performance Metrics**: Response times and latency for each service
+  - **Error Details**: Detailed error messages for troubleshooting
+  - **Modern UI**: Beautiful, responsive design with live status updates
+  - See [HEALTHCHECK.md](./docs/HEALTHCHECK.md) for detailed documentation
 
 ## 🛠️ Tech Stack
 

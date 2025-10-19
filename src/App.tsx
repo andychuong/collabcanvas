@@ -15,12 +15,14 @@ import { useTransformHandlers } from './hooks/useTransformHandlers';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useOptimisticShapes } from './hooks/useOptimisticShapes';
 import { useShapePlacement } from './hooks/useShapePlacement';
+import { useShapeHistory } from './hooks/useShapeHistory';
 import { Auth } from './components/Auth';
 import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
 import { Footer } from './components/Footer';
 import { AIChat } from './components/AIChat';
-import { Shape, ShapeType, ViewportState } from './types';
+import { ShapeHistoryPanel } from './components/ShapeHistoryPanel';
+import { Shape, ShapeType, ViewportState, ShapeHistoryEntry } from './types';
 import { getUserColor } from './utils/colors';
 import { APP_VERSION, VERSION_KEY } from './config/appVersion';
 import { debugUserAuth } from './utils/debugAuth';
@@ -80,7 +82,7 @@ function App() {
     localStorage.setItem(VERSION_KEY, APP_VERSION);
   }, []);
   
-  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, batchUpdateShapes, throttledBatchUpdate, throttledUpdateShape, deleteShape } = useShapes(groupId);
+  const { shapes: firestoreShapes, loading: shapesLoading, addShape, updateShape, batchUpdateShapes, throttledBatchUpdate, throttledUpdateShape, deleteShape } = useShapes(groupId, user?.uid);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   
@@ -115,6 +117,48 @@ function App() {
   const [shapeToPlace, setShapeToPlace] = useState<ShapeType | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  
+  // Shape history - only load when a single shape is selected
+  const historyShapeId = selectedShapeIds.length === 1 ? selectedShapeIds[0] : (selectedShapeId || null);
+  const { historyEntries, loading: historyLoading, restoreVersion } = useShapeHistory(
+    groupId, 
+    showHistory ? historyShapeId : null
+  );
+  
+  // Helper functions for AI to access history
+  const getShapeHistoryForAI = useCallback(async (shapeId: string): Promise<ShapeHistoryEntry[]> => {
+    if (!groupId) return [];
+    
+    try {
+      const { collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      
+      const historyRef = collection(db, 'groups', groupId, 'canvases', 'main-canvas', 'history');
+      const historyQuery = query(
+        historyRef,
+        where('shapeId', '==', shapeId),
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
+      
+      const snapshot = await getDocs(historyQuery);
+      const entries: ShapeHistoryEntry[] = [];
+      
+      snapshot.forEach((doc) => {
+        entries.push(doc.data() as ShapeHistoryEntry);
+      });
+      
+      return entries;
+    } catch (error) {
+      console.error('Error fetching shape history for AI:', error);
+      return [];
+    }
+  }, [groupId]);
+  
+  const restoreShapeVersionForAI = useCallback(async (entry: ShapeHistoryEntry) => {
+    restoreVersion(entry, (shape, immediate) => handleShapeUpdate(shape, immediate || true));
+  }, [restoreVersion, handleShapeUpdate]);
   
   // Shape placement state management (consolidates line/rectangle/arrow/circle in progress)
   const {
@@ -589,6 +633,8 @@ function App() {
         isSelectMode={isSelectMode}
         onToggleSelectMode={handleToggleSelectMode}
         groupName={groupInfo?.name}
+        onShowHistory={() => setShowHistory(!showHistory)}
+        showHistory={showHistory}
       />
       
       {/* Full-width content container */}
@@ -632,10 +678,26 @@ function App() {
         updateShape={(shape) => handleShapeUpdate(shape, true)}
         batchUpdateShapes={batchUpdateShapes}
         deleteShape={deleteShape}
+        getShapeHistory={getShapeHistoryForAI}
+        restoreShapeVersion={restoreShapeVersionForAI}
         userId={user.uid}
         canvasWidth={window.innerWidth}
         canvasHeight={window.innerHeight - 104}
       />
+      
+      {/* Shape History Panel */}
+      {showHistory && historyShapeId && (
+        <ShapeHistoryPanel
+          shapeId={historyShapeId}
+          historyEntries={historyEntries}
+          loading={historyLoading}
+          onRestore={(entry) => {
+            restoreVersion(entry, handleShapeUpdate);
+            setShowHistory(false);
+          }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }

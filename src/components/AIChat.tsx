@@ -10,6 +10,8 @@ interface Message {
   timestamp: number;
 }
 
+import { ShapeHistoryEntry } from '../types';
+
 interface AIChatProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +20,8 @@ interface AIChatProps {
   updateShape: (shape: Shape) => void;
   batchUpdateShapes?: (shapes: Shape[]) => void;
   deleteShape: (shapeId: string) => void;
+  getShapeHistory?: (shapeId: string) => Promise<ShapeHistoryEntry[]>;
+  restoreShapeVersion?: (entry: ShapeHistoryEntry) => Promise<void>;
   userId: string;
   canvasWidth: number;
   canvasHeight: number;
@@ -31,6 +35,8 @@ export const AIChat: React.FC<AIChatProps> = ({
   updateShape,
   batchUpdateShapes,
   deleteShape,
+  getShapeHistory,
+  restoreShapeVersion,
   userId,
   canvasWidth,
   canvasHeight,
@@ -38,7 +44,7 @@ export const AIChat: React.FC<AIChatProps> = ({
   const [messages, setMessages] = useState<Message[]>([{
     id: Date.now().toString(),
     role: 'assistant',
-    content: "Hi! I'm your AI canvas assistant. I can help you create and manipulate shapes with natural language commands. Try saying things like:\n\n• \"Create a red circle at position 200, 300\"\n• \"Add a text that says 'Hello World'\"\n• \"Make a 3x3 grid of squares\"\n• \"Move the blue rectangle to the center\"",
+    content: "Hi! I'm your AI canvas assistant. I can help you create and manipulate shapes with natural language commands. Try saying things like:\n\n• \"Create a red circle at position 200, 300\"\n• \"Add a text that says 'Hello World'\"\n• \"Make a 3x3 grid of squares\"\n• \"Move the blue rectangle to the center\"\n• \"Show me the history of the red circle\"\n• \"Restore the circle to its previous version\"",
     timestamp: Date.now(),
   }]);
   const [inputValue, setInputValue] = useState('');
@@ -121,6 +127,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         updateShape,
         batchUpdateShapes,
         deleteShape,
+        getShapeHistory,
+        restoreShapeVersion,
         userId,
         canvasWidth,
         canvasHeight,

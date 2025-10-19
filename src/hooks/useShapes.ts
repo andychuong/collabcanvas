@@ -7,11 +7,12 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Shape } from '../types';
+import { Shape, ShapeHistoryEntry } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 const CANVAS_ID = 'main-canvas'; // Canvas identifier within each group
 
-export const useShapes = (groupId: string | null) => {
+export const useShapes = (groupId: string | null, userId?: string) => {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,22 +46,54 @@ export const useShapes = (groupId: string | null) => {
     return () => unsubscribe();
   }, [groupId]);
 
-  const addShape = useCallback(async (shape: Shape) => {
+  // Helper function to save history entry
+  const saveHistoryEntry = useCallback(async (
+    shape: Shape,
+    action: 'created' | 'updated' | 'transformed' | 'styled'
+  ) => {
+    if (!groupId || !userId) return;
+    
+    try {
+      const entryId = uuidv4();
+      const entry: ShapeHistoryEntry = {
+        id: entryId,
+        shapeId: shape.id,
+        snapshot: { ...shape },
+        timestamp: Date.now(),
+        userId,
+        action,
+      };
+      
+      const historyRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'history', entryId);
+      await setDoc(historyRef, entry);
+    } catch (error) {
+      console.error('Error saving history entry:', error);
+    }
+  }, [groupId, userId]);
+
+  const addShape = useCallback(async (shape: Shape, skipHistory: boolean = false) => {
     if (!groupId) return;
     
     try {
       const shapeRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'shapes', shape.id);
-      await setDoc(shapeRef, {
+      const shapeData = {
         ...shape,
         createdAt: shape.createdAt || Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+      await setDoc(shapeRef, shapeData);
+      
+      // Save creation history only if not skipped
+      // Skip for shapes with two-step creation (rectangle, circle, arrow) - save history on finalization instead
+      if (userId && !skipHistory) {
+        await saveHistoryEntry(shapeData, 'created');
+      }
     } catch (error) {
       console.error('Error adding shape:', error);
     }
-  }, [groupId]);
+  }, [groupId, userId, saveHistoryEntry]);
 
-  const updateShape = useCallback(async (shape: Shape) => {
+  const updateShape = useCallback(async (shape: Shape, trackHistory: boolean = false) => {
     if (!groupId) return;
     
     try {
@@ -68,14 +101,55 @@ export const useShapes = (groupId: string | null) => {
       
       // Always use current timestamp for "last write wins"
       // The real-time listener will ensure we see the most recent version
-      await setDoc(shapeRef, {
+      const updatedShape = {
         ...shape,
         updatedAt: Date.now(), // Fresh timestamp = this is the latest version
-      }, { merge: true });
+      };
+      
+      await setDoc(shapeRef, updatedShape, { merge: true });
+      
+      // Determine action type based on what changed
+      // Only track history if explicitly requested (for final updates, not intermediate drag movements)
+      if (trackHistory && userId) {
+        const existingShape = shapes.find(s => s.id === shape.id);
+        let action: 'created' | 'updated' | 'transformed' | 'styled' = 'updated';
+        
+        if (existingShape) {
+          // Check if this shape was just created with placeholder dimensions
+          // (width/height = 1, or radius = 1) - treat as creation
+          const isPlaceholder = (existingShape.width === 1 && existingShape.height === 1) || 
+                               existingShape.radius === 1;
+          
+          if (isPlaceholder) {
+            // This is the first real update after creation with placeholder dimensions
+            action = 'created';
+          } else {
+            // Check if position/size changed (transformation)
+            const posChanged = existingShape.x !== shape.x || existingShape.y !== shape.y;
+            const sizeChanged = existingShape.width !== shape.width || 
+                               existingShape.height !== shape.height ||
+                               existingShape.radius !== shape.radius;
+            const rotationChanged = existingShape.rotation !== shape.rotation;
+            
+            // Check if style changed
+            const styleChanged = existingShape.fill !== shape.fill ||
+                                existingShape.stroke !== shape.stroke ||
+                                existingShape.strokeWidth !== shape.strokeWidth;
+            
+            if (posChanged || sizeChanged || rotationChanged) {
+              action = 'transformed';
+            } else if (styleChanged) {
+              action = 'styled';
+            }
+          }
+        }
+        
+        await saveHistoryEntry(updatedShape, action);
+      }
     } catch (error) {
       console.error('Error updating shape:', error);
     }
-  }, [groupId]);
+  }, [groupId, userId, shapes, saveHistoryEntry]);
 
   // Batch update multiple shapes at once using Firebase WriteBatch for atomic updates
   const batchUpdateShapes = useCallback(async (shapes: Shape[]) => {

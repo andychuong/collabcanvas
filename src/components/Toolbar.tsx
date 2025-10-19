@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, ArrowRight } from 'lucide-react';
+import { Square, Circle, Type, Trash2, LogOut, Minus, Undo2, Redo2, Copy, MousePointer2, Plus, Bold, Italic, Underline, RotateCcw, RotateCw, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, ArrowRight, Clock } from 'lucide-react';
 import { ShapeType, User as UserType, Shape } from '../types';
 import { ColorPicker } from './ColorPicker';
 
@@ -33,6 +33,8 @@ interface ToolbarProps {
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
   groupName?: string;
+  onShowHistory?: () => void;
+  showHistory?: boolean;
 }
 
 // Helper function to get initials from a name
@@ -81,8 +83,11 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
   isSelectMode,
   onToggleSelectMode,
   groupName,
+  onShowHistory,
+  showHistory,
 }) => {
   const hasSelection = selectedShapeIds.length > 0;
+  const hasSingleSelection = selectedShapeIds.length === 1;
   
   // Get the selected shape's color
   const selectedShape = hasSelection && selectedShapeIds.length === 1 
@@ -529,6 +534,25 @@ export const Toolbar: React.FC<ToolbarProps> = React.memo(({
                     Duplicate (Ctrl+D)
                   </div>
                 </div>
+                
+                {/* History button - only show for single selection */}
+                {hasSingleSelection && onShowHistory && (
+                  <div className="relative group">
+                    <button
+                      onClick={onShowHistory}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors ${
+                        showHistory 
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Clock className="w-5 h-5" />
+                    </button>
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                      Shape History
+                    </div>
+                  </div>
+                )}
                 
                 <div className="relative group">
                   <button

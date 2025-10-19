@@ -18,8 +18,8 @@ import { Shape } from '../types';
  */
 export function useOptimisticShapes(
   firestoreShapes: Shape[],
-  addShape: (shape: Shape) => void,
-  updateShape: (shape: Shape) => void,
+  addShape: (shape: Shape, skipHistory?: boolean) => void,
+  updateShape: (shape: Shape, trackHistory?: boolean) => void,
   throttledUpdateShape: (shape: Shape) => void,
   throttledBatchUpdate: (shapes: Shape[]) => void,
   addToHistory: (shapes: Shape[]) => void
@@ -105,12 +105,14 @@ export function useOptimisticShapes(
     });
     
     if (immediate) {
-      updateShape(shape);
+      // For immediate updates (drag end, resize end, etc.), track history
+      updateShape(shape, true); // trackHistory = true
       const updatedShapes = shapes.map(s => s.id === shape.id ? shape : s);
       setTimeout(() => {
         addToHistory(updatedShapes);
       }, 100);
     } else {
+      // For throttled updates (during dragging), don't track history
       throttledUpdateShape(shape);
     }
   }, [updateShape, throttledUpdateShape, addToHistory, shapes]);
