@@ -1325,16 +1325,22 @@ function displayTestResults() {
   html += `</div>`;
   
   // Test suites
-  testResults.forEach(suite => {
+  testResults.forEach((suite, suiteIndex) => {
     const suitePassed = suite.tests.filter(t => t.passed).length;
     const suiteTotal = suite.tests.length;
     
     html += `<div class="test-suite">`;
-    html += `<div class="test-suite-header">`;
+    html += `<div class="test-suite-header" data-suite-index="${suiteIndex}">`;
+    html += `<div class="test-suite-header-left">`;
+    html += `<svg class="test-suite-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">`;
+    html += `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>`;
+    html += `</svg>`;
     html += `<span>${suite.name}</span>`;
+    html += `</div>`;
     html += `<span style="font-size: 14px; color: #718096;">${suitePassed}/${suiteTotal} passed</span>`;
     html += `</div>`;
     
+    html += `<div class="test-suite-content" data-suite-content="${suiteIndex}">`;
     suite.tests.forEach(test => {
       const statusClass = test.passed ? 'passed' : 'failed';
       const badge = test.passed ? 'PASS' : 'FAIL';
@@ -1355,11 +1361,25 @@ function displayTestResults() {
       html += `<span class="test-badge ${statusClass}">${badge}</span>`;
       html += `</div>`;
     });
+    html += `</div>`; // Close test-suite-content
     
-    html += `</div>`;
+    html += `</div>`; // Close test-suite
   });
   
   resultsDiv.innerHTML = html;
+  
+  // Add click handlers for test suite collapse/expand
+  document.querySelectorAll('.test-suite-header').forEach(header => {
+    header.addEventListener('click', (e) => {
+      const index = e.currentTarget.getAttribute('data-suite-index');
+      const content = document.querySelector(`[data-suite-content="${index}"]`);
+      const toggle = e.currentTarget.querySelector('.test-suite-toggle');
+      
+      content.classList.toggle('collapsed');
+      toggle.classList.toggle('collapsed');
+      e.currentTarget.classList.toggle('collapsed');
+    });
+  });
 }
 
 window.runTests = runTests;

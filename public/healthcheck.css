@@ -259,6 +259,42 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: margin-bottom 0.3s ease;
+}
+
+.test-suite-header.collapsed {
+  margin-bottom: 0;
+}
+
+.test-suite-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.test-suite-toggle {
+  width: 20px;
+  height: 20px;
+  color: #718096;
+  transition: transform 0.3s ease;
+}
+
+.test-suite-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.test-suite-content {
+  max-height: 5000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.test-suite-content.collapsed {
+  max-height: 0;
+  opacity: 0;
 }
 
 .test-case {
