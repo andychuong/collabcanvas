@@ -51,7 +51,10 @@ export const useShapes = (groupId: string | null, userId?: string) => {
     shape: Shape,
     action: 'created' | 'updated' | 'transformed' | 'styled'
   ) => {
-    if (!groupId || !userId) return;
+    if (!groupId || !userId) {
+      console.warn('[Shape History] Cannot save history: missing groupId or userId', { groupId, userId });
+      return;
+    }
     
     try {
       const entryId = uuidv4();
@@ -64,10 +67,19 @@ export const useShapes = (groupId: string | null, userId?: string) => {
         action,
       };
       
+      console.log('[Shape History] Saving history entry:', {
+        shapeId: shape.id,
+        shapeType: shape.type,
+        action,
+        userId
+      });
+      
       const historyRef = doc(db, 'groups', groupId, 'canvases', CANVAS_ID, 'history', entryId);
       await setDoc(historyRef, entry);
+      
+      console.log('[Shape History] History entry saved successfully');
     } catch (error) {
-      console.error('Error saving history entry:', error);
+      console.error('[Shape History] Error saving history entry:', error);
     }
   }, [groupId, userId]);
 
@@ -152,7 +164,7 @@ export const useShapes = (groupId: string | null, userId?: string) => {
   }, [groupId, userId, shapes, saveHistoryEntry]);
 
   // Batch update multiple shapes at once using Firebase WriteBatch for atomic updates
-  const batchUpdateShapes = useCallback(async (shapes: Shape[]) => {
+  const batchUpdateShapes = useCallback(async (shapes: Shape[], trackHistory: boolean = false) => {
     if (!groupId) return;
     
     try {
@@ -172,10 +184,19 @@ export const useShapes = (groupId: string | null, userId?: string) => {
       
       // Commit all updates atomically - they all succeed or all fail together
       await batch.commit();
+      
+      // If history tracking is requested, save history entries for each shape
+      if (trackHistory && userId) {
+        console.log('[Shape History] Batch update with history tracking for', shapes.length, 'shapes');
+        // Save history entries in parallel
+        await Promise.all(
+          shapes.map(shape => saveHistoryEntry(shape, 'updated'))
+        );
+      }
     } catch (error) {
       console.error('Error batch updating shapes:', error);
     }
-  }, [groupId]);
+  }, [groupId, userId, saveHistoryEntry]);
 
   // Throttled batch update for smooth multi-shape dragging
   const throttledBatchUpdate = useCallback(

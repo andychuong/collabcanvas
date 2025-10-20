@@ -932,11 +932,15 @@ export class CanvasAIAgent {
             break;
           case 'top':
             newX = targetShape.x;
-            newY = targetShape.y - shapeHeight / 2 + (textShape.fontSize || 24) / 2 + 20;
+            // Position near top with dynamic padding (min 30px, scales with height)
+            const topPadding = Math.max(30, shapeHeight * 0.08);
+            newY = targetShape.y - shapeHeight / 2 + (textShape.fontSize || 24) / 2 + topPadding;
             break;
           case 'bottom':
             newX = targetShape.x;
-            newY = targetShape.y + shapeHeight / 2 - (textShape.fontSize || 24) / 2 - 20;
+            // Position near bottom with dynamic padding (min 30px, scales with height)
+            const bottomPadding = Math.max(30, shapeHeight * 0.08);
+            newY = targetShape.y + shapeHeight / 2 - (textShape.fontSize || 24) / 2 - bottomPadding;
             break;
           case 'left-center':
             // Left-aligned with padding, vertically centered (perfect for form labels)
@@ -1318,13 +1322,21 @@ CRITICAL - Coordinate System Understanding:
 When interpreting position commands:
 - If user says "top-left corner at X, Y" for a WxH rectangle: center_x = X + W/2, center_y = Y + H/2
 - If user says "position at X, Y" without specifying corner: use X, Y as center
+- If user says "at x:NUMBER y:NUMBER" format: treat as top-left corner, calculate center
+- If user says "at (X, Y)" format: treat as center position directly
 - IMPORTANT: Use the EXACT coordinates the user specifies, including negative values
 - Negative coordinates are VALID - do not adjust them to positive values
+- NEVER use find_blank_space when user specifies exact coordinates
 - Do not constrain to canvas bounds unless user asks for visible placement
 - User can place shapes anywhere in the infinite canvas space
 - "center" means approximately (${this.context.canvasWidth / 2}, ${this.context.canvasHeight / 2})
 - Default sizes: circles radius 50, rectangles 100x100
 - When creating multiple items, calculate proper spacing based on dimensions
+
+CRITICAL coordinate parsing examples:
+- "create form at x:-1400 y:-820" → Top-left at (-1400, -820), calculate center from dimensions
+- "create form at (-500, -300)" → Center at (-500, -300) directly
+- "create form at position -200, 400" → Center at (-200, 400) directly
 
 CRITICAL - Batch operations (MUST USE for efficiency):
 - When creating 5+ circles: ALWAYS use create_multiple_circles (NOT individual create_circle)
@@ -1388,13 +1400,15 @@ Form creation best practices:
 - Add proper spacing between elements (50-70px vertical spacing)
 - Complete workflow: Create rectangle → Create new text → Align text to rectangle
 
-Example: Creating a login form with top-left at (600, -600):
+Example 1: Creating a login form with "x:600 y:-600" format:
+- User says: "create login form at x:600 y:-600"
+- Interpret as: Top-left corner at (600, -600)
 - Form dimensions: 300w x 400h
-- Container center: x = 600 + 300/2 = 750, y = -600 + 400/2 = -400
+- Calculate container center: x = 600 + 300/2 = 750, y = -600 + 400/2 = -400
 Steps:
 1. Create container rectangle at (750, -400) - 300x400
 2. Create title text "Login" - black
-3. Align title text to 'top' of container rectangle (automatic 20px padding)
+3. Align title text to 'top' of container rectangle (automatic 30-40px padding based on height)
 4. Create username input rectangle at (750, -470) - 220x45 - black border
 5. Create username text "Username" - dark gray  
 6. Align username text to left-center of username rectangle
@@ -1404,7 +1418,12 @@ Steps:
 10. Create button rectangle at (750, -340) - 120x40 - black border
 11. Create button text "Login" - black
 12. Align button text to center of button rectangle
-Result: Complete login form with top-left at (600, -600), including negative Y coordinates
+
+Example 2: Negative X coordinates work the same way:
+- User says: "create sign up page at x:-1400 y:-820"
+- Top-left at (-1400, -820), dimensions 250x400
+- Container center: x = -1400 + 250/2 = -1275, y = -820 + 400/2 = -620
+- Create container at (-1275, -620) with 250x400 dimensions
 
 CRITICAL - Do NOT touch existing canvas elements:
 - When creating NEW forms/layouts, ONLY manipulate shapes you just created

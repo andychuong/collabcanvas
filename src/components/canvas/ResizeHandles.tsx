@@ -23,26 +23,45 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
 
   const calculateNewDimensions = useCallback((corner: Corner, localX: number, localY: number) => {
     // localX and localY are in the rotated coordinate space of the Group
-    // Calculate new dimensions based on distance from center
+    // Keep the opposite corner fixed and resize from the dragged corner
+    const rotation = (shape.rotation || 0) * Math.PI / 180; // Convert to radians
     let newWidth = width;
     let newHeight = height;
+    let localOffsetX = 0;
+    let localOffsetY = 0;
 
     switch (corner) {
       case 'topLeft':
-        newWidth = Math.abs(localX) * 2;
-        newHeight = Math.abs(localY) * 2;
+        // Dragging top-left, keep bottom-right fixed at (width/2, height/2)
+        newWidth = width / 2 - localX;
+        newHeight = height / 2 - localY;
+        // New center is midpoint between dragged corner and fixed corner
+        localOffsetX = (localX + width / 2) / 2;
+        localOffsetY = (localY + height / 2) / 2;
         break;
       case 'topRight':
-        newWidth = Math.abs(localX) * 2;
-        newHeight = Math.abs(localY) * 2;
+        // Dragging top-right, keep bottom-left fixed at (-width/2, height/2)
+        newWidth = localX - (-width / 2);
+        newHeight = height / 2 - localY;
+        // New center is midpoint between dragged corner and fixed corner
+        localOffsetX = (-width / 2 + localX) / 2;
+        localOffsetY = (localY + height / 2) / 2;
         break;
       case 'bottomLeft':
-        newWidth = Math.abs(localX) * 2;
-        newHeight = Math.abs(localY) * 2;
+        // Dragging bottom-left, keep top-right fixed at (width/2, -height/2)
+        newWidth = width / 2 - localX;
+        newHeight = localY - (-height / 2);
+        // New center is midpoint between dragged corner and fixed corner
+        localOffsetX = (localX + width / 2) / 2;
+        localOffsetY = (-height / 2 + localY) / 2;
         break;
       case 'bottomRight':
-        newWidth = Math.abs(localX) * 2;
-        newHeight = Math.abs(localY) * 2;
+        // Dragging bottom-right, keep top-left fixed at (-width/2, -height/2)
+        newWidth = localX - (-width / 2);
+        newHeight = localY - (-height / 2);
+        // New center is midpoint between dragged corner and fixed corner
+        localOffsetX = (-width / 2 + localX) / 2;
+        localOffsetY = (-height / 2 + localY) / 2;
         break;
     }
 
@@ -50,8 +69,15 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
     if (newWidth < 10) newWidth = 10;
     if (newHeight < 10) newHeight = 10;
 
-    // Center position stays the same (shape.x, shape.y)
-    return { newShapeX: shape.x, newShapeY: shape.y, newWidth, newHeight };
+    // Convert local offset to world coordinates using rotation
+    const worldOffsetX = localOffsetX * Math.cos(rotation) - localOffsetY * Math.sin(rotation);
+    const worldOffsetY = localOffsetX * Math.sin(rotation) + localOffsetY * Math.cos(rotation);
+
+    // Apply offset to shape center
+    const newShapeX = shape.x + worldOffsetX;
+    const newShapeY = shape.y + worldOffsetY;
+
+    return { newShapeX, newShapeY, newWidth, newHeight };
   }, [shape, width, height]);
 
   const calculateNewDimensionsEdge = useCallback((edge: Edge, localX: number, localY: number) => {
@@ -122,6 +148,23 @@ export const ResizeHandles: React.FC<ResizeHandlesProps> = ({ shape, onUpdate, o
       height: newHeight,
       updatedAt: Date.now(),
     }, false);
+
+    // Reset the handle position to the corner of the new dimensions
+    // This keeps the handle on the corner as the shape resizes
+    switch (corner) {
+      case 'topLeft':
+        node.position({ x: -newWidth / 2, y: -newHeight / 2 });
+        break;
+      case 'topRight':
+        node.position({ x: newWidth / 2, y: -newHeight / 2 });
+        break;
+      case 'bottomLeft':
+        node.position({ x: -newWidth / 2, y: newHeight / 2 });
+        break;
+      case 'bottomRight':
+        node.position({ x: newWidth / 2, y: newHeight / 2 });
+        break;
+    }
   }, [shape, calculateNewDimensions, onUpdate]);
 
   const handleCornerDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {

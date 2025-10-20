@@ -92,8 +92,9 @@ export function useOptimisticShapes(
       return next;
     });
     
-    // Then sync to Firestore
-    addShape(shape);
+    // Then sync to Firestore with explicit history tracking enabled
+    // Pass false for skipHistory to ensure shape history is created
+    addShape(shape, false);
   }, [addShape]);
 
   // Helper for shape updates with optimistic UI and history
