@@ -4,7 +4,8 @@ import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
-// Firebase configuration
+// Firebase configuration - this file should be built using the build-healthcheck script
+// For development, these placeholders will cause errors. Run: npm run build:healthcheck
 const firebaseConfig = {
   apiKey: "VITE_FIREBASE_API_KEY",
   authDomain: "VITE_FIREBASE_AUTH_DOMAIN",
@@ -15,11 +16,25 @@ const firebaseConfig = {
   databaseURL: "VITE_FIREBASE_DATABASE_URL"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const realtimeDb = getDatabase(app);
+// Initialize Firebase only if config is valid
+let app, auth, db, realtimeDb;
+
+try {
+  // Check if we have valid config (not placeholder strings)
+  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('VITE_')) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    // Only initialize Realtime Database if URL is provided
+    if (firebaseConfig.databaseURL && firebaseConfig.databaseURL !== 'VITE_FIREBASE_DATABASE_URL') {
+      realtimeDb = getDatabase(app);
+    }
+  } else {
+    console.warn('⚠️ Healthcheck: Firebase config contains placeholders. Run "npm run build:healthcheck" to build with actual credentials.');
+  }
+} catch (error) {
+  console.error('Failed to initialize Firebase for healthcheck:', error);
+}
 
 export { auth, db, realtimeDb };
 
